@@ -48,9 +48,9 @@ public class InvalidEditIdsError {
 
 public interface IDataStore {
 
-	public Task<bool> ConnectAndEnsureTables(string dbPath);
-
-
+	// If we want Initialize() as part of the interface we will likely want:
+	// public interface IDataStore<TSelf> where TSelf : IDataStore<TSelf> { ... }
+	//public static abstract Task<TSelf?> Initialize(string settings);
 
 	public Task<List<GameSpec>> GetGameSpecs();
 
@@ -85,5 +85,11 @@ public interface IDataStore {
 	public Task<string?> GetLastScout();
 
 	public Task<bool> SetLastScout(string scoutName);
+
+}
+
+public interface IDataStoreCreator {
+
+	public Task<IDataStore?> Create(string settings); // TODO make this Result<> instead of nullable
 
 }

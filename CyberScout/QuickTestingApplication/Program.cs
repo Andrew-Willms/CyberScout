@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using System.Threading.Tasks;
 using Domain.Data;
 using Domain.GameSpecification;
@@ -10,6 +9,7 @@ using Database;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Optional;
 using UtilitiesLibrary.Results;
+using Database.Sqlite;
 
 namespace QuickTestingApplication;
 
@@ -19,15 +19,13 @@ public class Program {
 
 	private static async Task Main(string[] args) {
 
-		SqliteDataStore dataStore = new();
+		SqliteDataStoreVersion1? dataStore = await SqliteDataStoreVersion1.Initialize("test.db");
 
-		bool success = await dataStore.ConnectAndEnsureTables("test.db");
-
-		if (!success) {
+		if (dataStore is not SqliteDataStoreVersion1) {
 			throw new();
 		}
 
-		success = await dataStore.SetLastScout("test");
+		bool success = await dataStore.SetLastScout("test");
 
 		if (!success) {
 			throw new();
