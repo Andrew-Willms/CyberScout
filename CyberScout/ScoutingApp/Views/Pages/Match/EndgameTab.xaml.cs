@@ -11,13 +11,14 @@ public partial class EndgameTab : ContentPage {
 
 	public static string Route => "Endgame";
 
-	private IAppManager AppManager { get; }
+	private AppManager AppManager { get; }
 
 	public ReadOnlyList<InputDataCollector> Inputs => AppManager.ActiveMatchData.EndgameTabInputs;
 
-	public EndgameTab(IAppManager appManager) {
+	public EndgameTab(AppManagerGetter appManagerGetter) {
 
-		AppManager = appManager;
+		// TODO: add graceful error handling
+		AppManager = appManagerGetter.Instance ?? throw new AppManagerNotCreatedException(typeof(EndgameTab));
 		AppManager.OnMatchStarted.Subscribe(() => OnPropertyChanged(nameof(Inputs)));
 
 		BindingContext = this;

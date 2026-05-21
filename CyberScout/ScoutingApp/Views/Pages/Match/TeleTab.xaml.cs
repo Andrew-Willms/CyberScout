@@ -11,13 +11,14 @@ public partial class TeleTab : ContentPage {
 
 	public static string Route => "Tele";
 
-	private IAppManager AppManager { get; }
+	private AppManager AppManager { get; }
 
 	public ReadOnlyList<InputDataCollector> Inputs => AppManager.ActiveMatchData.TeleTabInputs;
 
-	public TeleTab(IAppManager appManager) {
+	public TeleTab(AppManagerGetter appManagerGetter) {
 
-		AppManager = appManager;
+		// TODO: add graceful error handling
+		AppManager = appManagerGetter.Instance ?? throw new AppManagerNotCreatedException(typeof(TeleTab));
 		AppManager.OnMatchStarted.Subscribe(() => OnPropertyChanged(nameof(Inputs)));
 
 		BindingContext = this;

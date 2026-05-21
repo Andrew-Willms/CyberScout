@@ -15,7 +15,7 @@ public partial class SetupTab : ContentPage {
 
 	public static string Route => "Setup";
 
-	private IAppManager AppManager { get; }
+	private AppManager AppManager { get; }
 
 	public uint? MatchNumber {
 
@@ -76,9 +76,10 @@ public partial class SetupTab : ContentPage {
 
 	public ReadOnlyList<InputDataCollector> Inputs => AppManager.ActiveMatchData.SetupTabInputs;
 
-	public SetupTab(IAppManager appManager) {
+	public SetupTab(AppManagerGetter appManagerGetter) {
 
-		AppManager = appManager;
+		// TODO: add graceful error handling
+		AppManager = appManagerGetter.Instance ?? throw new AppManagerNotCreatedException(typeof(SetupTab));
 
 		// ReSharper disable once ExplicitCallerInfoArgument - refresh all
 		AppManager.OnMatchStarted.Subscribe(() => OnPropertyChanged(""));

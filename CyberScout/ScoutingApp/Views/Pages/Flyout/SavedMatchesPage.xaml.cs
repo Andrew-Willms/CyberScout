@@ -19,7 +19,7 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 
 	public static string Route => "SavedMatches";
 
-	private IDataStore DataStore { get; }
+	private AppManager AppManager { get; }
 	private IErrorPresenter ErrorPresenter { get; }
 
 	private bool IsActuallyRefreshing;
@@ -45,9 +45,9 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 
 
 
-	public SavedMatchesPage(IDataStore dataStore, IErrorPresenter errorPresenter) {
+	public SavedMatchesPage(AppManagerGetter appManagerGetter, IErrorPresenter errorPresenter) {
 
-		DataStore = dataStore;
+		AppManager = appManagerGetter.Instance ?? throw new AppManagerNotCreatedException(typeof(SavedMatchesPage));
 		ErrorPresenter = errorPresenter;
 
 		SavedMatches.CollectionChanged += (sender, eventArgs) => {
@@ -71,7 +71,7 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 
 		SavedMatches.Clear();
 
-		GetMatchDataResult getMatchDataResult = await DataStore.GetMatchData();
+		GetMatchDataResult getMatchDataResult = await AppManager.DataStore.GetMatchData();
 
 		getMatchDataResult.Switch(
 			matchData => {
@@ -110,7 +110,7 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 
 	private async Task<bool> DeleteMatch(MatchDataDto matchData) {
 
-		return await DataStore.DeleteMatchData(matchData);
+		return await AppManager.DataStore.DeleteMatchData(matchData);
 	}
 
 
@@ -211,7 +211,7 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 				return;
 			}
 
-			bool success = await DataStore.DeleteAllMatchData();
+			bool success = await AppManager.DataStore.DeleteAllMatchData();
 
 			if (success) {
 				await Refresh();

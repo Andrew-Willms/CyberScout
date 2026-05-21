@@ -16,49 +16,18 @@ namespace ScoutingApp.AppManagement;
 
 
 
-
 [GenerateOneOf]
 public partial class SaveAndStartNewMatchResult : OneOfBase<OneOf.Types.Success, Exception, MatchDataIsInvalid>;
+
+
 
 public class MatchDataIsInvalid;
 
 
 
-public interface IAppManager : INotifyPropertyChanged {
+public class AppManager : INotifyPropertyChanged {
 
-	public GameSpec? GameSpecification { get; }
-
-	public MatchDataCollector ActiveMatchData { get; }
-
-	public string Scout { get; set; }
-
-	public string EventCode { get; set; }
-
-	public Task ApplicationStartup();
-
-	public Task<SaveAndStartNewMatchResult> SaveAndStartNewMatch();
-
-	public bool CurrentMatchIsUnedited();
-
-	public void DiscardAndStartNewMatch();
-
-	public void DiscardAndStartEditingMatch(MatchDataDto matchData);
-
-	public Event OnMatchStarted { get; }
-
-	public Event OnNewData { get; }
-
-	public Task<string?> GetScoutName();
-
-	public Task<bool> SetScoutName(string name);
-
-}
-
-
-
-public class AppManager : IAppManager, INotifyPropertyChanged {
-
-	public GameSpec GameSpecification { get; private set; }
+	public GameSpec? GameSpecification { get; private set; }
 
 	public MatchDataCollector ActiveMatchData {
 		get;
@@ -85,14 +54,16 @@ public class AppManager : IAppManager, INotifyPropertyChanged {
 
 	public Event OnNewData { get; } = new();
 
-	private static IDataStore DataStore => ServiceHelper.GetService<IDataStore>();
+	public IDataStore DataStore { get; }
 
 
 
-	public AppManager() {
+	private AppManager(IDataStore dataStore) {
 
 		GameSpecification = null!; // todo fix hack
+		DataStore = dataStore;
 
+		// todo: fix hack
 		if (DateTime.Now >= new DateTime(2026, 3, 27) && DateTime.Now <= new DateTime(2026, 3, 28)) {
 			EventCode = "Waterloo";
 
@@ -112,7 +83,7 @@ public class AppManager : IAppManager, INotifyPropertyChanged {
 
 
 
-	public async Task ApplicationStartup() {
+	public static async Task<AppManager?> Create() {
 
 #if ANDROID
 		string directory = Android.App.Application.Context.GetExternalFilesDir(null)!.AbsoluteFile.Path;
@@ -120,14 +91,22 @@ public class AppManager : IAppManager, INotifyPropertyChanged {
 		string directory = FileSystem.Current.AppDataDirectory;
 #endif
 
-		string dbPath = System.IO.Path.Combine(directory, "ScoutingApp.db");
-		await DataStore.ConnectAndEnsureTables(dbPath);
+		string dbPath = System.IO.Path.Combine(directory, "ScoutingApp.db"); // TODO: move magic string literal somewhere else
 
-		GameSpecification = (await DataStore.GetGameSpecs()).First();
+		IDataStoreCreator dataStoreCreator = ServiceHelper.GetService<IDataStoreCreator>();
+		IDataStore? dataStore = await dataStoreCreator.Create(dbPath);
 
-		Scout = await GetScoutName() ?? string.Empty; // todo cleanup
+		if (dataStore is null) {
+			throw new(); // TODO: handle this better
+		}
 
-		StartNewMatch();
+		AppManager appManager = new(dataStore);
+
+		appManager.GameSpecification = (await dataStore.GetGameSpecs()).First(); // todo game specs should be selectable within the app
+		appManager.Scout = await appManager.GetScoutName() ?? string.Empty; // todo cleanup
+		appManager.StartNewMatch();
+
+		return appManager;
 	}
 
 	private void StartNewMatch() {

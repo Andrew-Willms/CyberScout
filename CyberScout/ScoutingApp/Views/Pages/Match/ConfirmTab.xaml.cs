@@ -22,8 +22,7 @@ public partial class ConfirmTab : ContentPage, INotifyPropertyChanged {
 
 	public static string Route => "Confirm";
 
-	private IAppManager AppManager { get; }
-	private IDataStore DataStore { get; }
+	private AppManager AppManager { get; }
 
 	private IErrorPresenter ErrorPresenter { get; }
 
@@ -77,11 +76,11 @@ public partial class ConfirmTab : ContentPage, INotifyPropertyChanged {
 
 
 
-	public ConfirmTab(IAppManager appManager, IErrorPresenter errorPresenter, IDataStore dataStore) {
+	public ConfirmTab(AppManagerGetter appManagerGetter, IErrorPresenter errorPresenter) {
 
-		AppManager = appManager;
+		// TODO: add graceful error handling
+		AppManager = appManagerGetter.Instance ?? throw new AppManagerNotCreatedException(typeof(ConfirmTab));
 		ErrorPresenter = errorPresenter;
-		DataStore = dataStore;
 
 		AppManager.OnMatchStarted.Subscribe(() => OnPropertyChanged(""));
 
@@ -130,7 +129,7 @@ public partial class ConfirmTab : ContentPage, INotifyPropertyChanged {
 		string deviceId = null as string ?? throw new NotSupportedException();
 #endif
 
-			GetMatchDataResult getMatchDataResult = await DataStore.GetMatchData();
+			GetMatchDataResult getMatchDataResult = await AppManager.DataStore.GetMatchData();
 			List<MatchDataDto>? allData = getMatchDataResult.IsT0 ? getMatchDataResult.AsT0 : null;
 			MatchDataDto? mostRecentMatch = allData?.Where(x => x.DeviceId == deviceId).MaxBy(x => x.RecordId);
 
@@ -200,7 +199,7 @@ public partial class ConfirmTab : ContentPage, INotifyPropertyChanged {
 
 	private async Task<bool> DeleteMatch(MatchDataDto matchData) {
 
-		return await DataStore.DeleteMatchData(matchData);
+		return await AppManager.DataStore.DeleteMatchData(matchData);
 	}
 
 

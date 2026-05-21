@@ -16,6 +16,7 @@ public partial class AppShell : Shell {
 		InitializeComponent();
 
 		GoToAsync(MatchRoute);
+		// TODO: figure out if I actually need this line and if I do should I move it to LoadingPage?
 	}
 
 }

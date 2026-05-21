@@ -117,6 +117,9 @@
 	  <Compile Update="Views\Pages\Flyout\SavedMatchesPage.xaml.cs">
 	    <DependentUpon>SavedMatchesPage.xaml</DependentUpon>
 	  </Compile>
+	  <Compile Update="Views\Pages\LoadingPage.xaml.cs">
+	    <DependentUpon>LoadingPage.xaml</DependentUpon>
+	  </Compile>
 	  <Compile Update="Views\Pages\Match\AutoTab.xaml.cs">
 	    <DependentUpon>AutoTab.xaml</DependentUpon>
 	  </Compile>
@@ -159,6 +162,9 @@
 	  <MauiXaml Update="Views\Pages\Flyout\SavedMatchesPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	  <MauiXaml Update="Views\Pages\LoadingPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="Views\Pages\Match\AutoTab.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
@@ -177,7 +183,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="AppManagement\" />
 	  <Folder Include="Views\DataTemplateSelectors\" />
 	</ItemGroup>
 

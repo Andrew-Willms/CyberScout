@@ -18,8 +18,7 @@ public partial class QrCodeScanner : ContentPage {
 
 	public static string Route => "QrCodeScanner";
 
-	private IAppManager AppManager { get; }
-	private IDataStore DataStore { get; }
+	private AppManager AppManager { get; }
 	private IErrorPresenter ErrorPresenter { get; }
 
 	public int QrCodeCount {
@@ -40,10 +39,10 @@ public partial class QrCodeScanner : ContentPage {
 
 
 
-	public QrCodeScanner(IAppManager appManager, IDataStore dataStore, IErrorPresenter errorPresenter) {
+	public QrCodeScanner(AppManagerGetter appManagerGetter, IDataStore dataStore, IErrorPresenter errorPresenter) {
 
-		AppManager = appManager;
-		DataStore = dataStore;
+		// TODO: add graceful error handling
+		AppManager = appManagerGetter.Instance ?? throw new AppManagerNotCreatedException(typeof(QrCodeScanner));
 		ErrorPresenter = errorPresenter;
 
 		BindingContext = this;
@@ -80,7 +79,7 @@ public partial class QrCodeScanner : ContentPage {
 			return;
 		}
 
-		AddMatchDataFromOtherDeviceResult saveResult = DataStore.AddMatchDataFromOtherDevice(matchDataDto).Result;
+		AddMatchDataFromOtherDeviceResult saveResult = AppManager.DataStore.AddMatchDataFromOtherDevice(matchDataDto).Result;
 
 		MainThread.BeginInvokeOnMainThread(() => {
 
@@ -132,7 +131,7 @@ public partial class QrCodeScanner : ContentPage {
 				return;
 			}
 
-			GetMatchDataResult matchDataResult = await DataStore.GetMatchData();
+			GetMatchDataResult matchDataResult = await AppManager.DataStore.GetMatchData();
 
 			string? error = matchDataResult.Match<string?>(
 				success => null,

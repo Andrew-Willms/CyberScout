@@ -1,4 +1,5 @@
 ﻿using Database;
+using Database.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Controls.Hosting;
@@ -35,8 +36,8 @@ public static class MauiProgram {
 #if DEBUG
 		builder.Logging.AddDebug();
 #endif
-		builder.Services.AddSingleton<IAppManager, AppManager>();
-		builder.Services.AddSingleton<IDataStore, SqliteDataStore>();
+		builder.Services.AddSingleton<AppManagerGetter>();
+		builder.Services.AddSingleton<IDataStoreCreator, SqliteDataStoreVersion1Creator>();
 		builder.Services.AddSingleton<IErrorPresenter, ErrorPresenter>();
 
 		// todo figure out when new instances of the transient types are being created and if

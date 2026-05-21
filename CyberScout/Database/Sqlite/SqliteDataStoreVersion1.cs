@@ -42,9 +42,13 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			public const string PublicKey = "PublicKey";
 		}
 
+		public static class GameIdSequence {
+			public const string NextRecordId = "NextRecordId";
+		}
+
 		public static class Games {
+			public const string DeviceId = "DeviceId";
 			public const string GameId = "GameId";
-			public const string PublishedByDeviceId = "PublishedByDeviceId";
 			public const string TimePublished = "TimePublished";
 			public const string Data = "Data";
 			public const string MajorVersion = "MajorVersion";
@@ -68,15 +72,17 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			public const string ManuallyCreated = "TimePublished";
 		}
 
-		public static class RecordIdSequence {
+		public static class MatchIdSequence {
 			public const string NextRecordId = "NextRecordId";
 		}
 
 		public static class MatchData {
 			public const string DeviceId = "DeviceId";
-			public const string RecordId = "RecordId";
+			public const string MatchId = "MatchId";
 			public const string OriginalDeviceId = "OriginalDeviceId";
 			public const string OriginalRecordId = "OriginalRecordId";
+			public const string GameDeviceId = "GameDeviceId";
+			public const string GameId = "GameId";
 			public const string Data = "Data";
 		}
 
@@ -228,19 +234,49 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			return false;
 		}
 
+		// -------- GameIdSequence Table --------
+		SqliteCommand createGameIdSequenceTable = new(
+			$"""
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.GameIdSequence)}" (
+			 	"{Tables.GameIdSequence.NextRecordId}" INTEGER NOT NULL
+			 );
+
+			 INSERT INTO "{nameof(Tables.GameIdSequence)}" ("{Tables.GameIdSequence.NextRecordId}")
+			 VALUES (0);
+
+			 CREATE TRIGGER "block_inserts_on_{nameof(Tables.GameIdSequence)}"
+			 BEFORE INSERT ON "{nameof(Tables.GameIdSequence)}"
+			 BEGIN
+			     SELECT RAISE(ABORT, 'Inserts are not allowed on this table; only updates.');
+			 END;
+
+			 CREATE TRIGGER "block_deletes_on_{nameof(Tables.GameIdSequence)}"
+			 BEFORE DELETE ON "{nameof(Tables.GameIdSequence)}"
+			 BEGIN
+			     SELECT RAISE(ABORT, 'Deletes are not allowed on this table; only updates.');
+			 END;
+			 """,
+			connection);
+
+		try {
+			await createGameIdSequenceTable.ExecuteNonQueryAsync();
+		} catch {
+			return false;
+		}
+
 		// -------- Games Table --------
 		SqliteCommand createGamesTable = new(
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.Games)}" (
-			 	"{Tables.Games.GameId}" INTEGER NOT NULL,
-			 	"{Tables.Games.PublishedByDeviceId}" TEXT NOT NULL,
-			 	"{Tables.Games.TimePublished}" INTEGER NOT NULL,
-			 	"{Tables.Games.MajorVersion}" INTEGER NOT NULL,
-			 	"{Tables.Games.MinorVersion}" INTEGER NOT NULL,
-			 	"{Tables.Games.PatchVersion}" INTEGER NOT NULL,
-			 	"{Tables.Games.Data}" TEXT NOT NULL,
-			 	
-			 	PRIMARY KEY ("{Tables.Games.GameId}", "{Tables.Games.PublishedByDeviceId}")
+			     "{Tables.Games.DeviceId}" TEXT NOT NULL,
+			     "{Tables.Games.GameId}" INTEGER NOT NULL,
+			     "{Tables.Games.TimePublished}" INTEGER NOT NULL,
+			     "{Tables.Games.MajorVersion}" INTEGER NOT NULL,
+			     "{Tables.Games.MinorVersion}" INTEGER NOT NULL,
+			     "{Tables.Games.PatchVersion}" INTEGER NOT NULL,
+			     "{Tables.Games.Data}" TEXT NOT NULL,
+			     
+			     PRIMARY KEY ("{Tables.Games.GameId}", "{Tables.Games.DeviceId}")
 			 );
 			 
 			 CREATE TRIGGER "block_updates_on_{nameof(Tables.Games)}"
@@ -309,24 +345,24 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			return false;
 		}
 
-		// -------- RecordIdSequence Table --------
-		SqliteCommand createRecordIdSequenceTable = new(
+		// -------- MatchIdSequence Table --------
+		SqliteCommand createMatchIdSequenceTable = new(
 			$"""
-			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.RecordIdSequence)}" (
-			 	"{Tables.RecordIdSequence.NextRecordId}" INTEGER NOT NULL
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.MatchIdSequence)}" (
+			 	"{Tables.MatchIdSequence.NextRecordId}" INTEGER NOT NULL
 			 );
 			 
-			 INSERT INTO "{nameof(Tables.RecordIdSequence)}" ("{Tables.RecordIdSequence.NextRecordId}")
+			 INSERT INTO "{nameof(Tables.MatchIdSequence)}" ("{Tables.MatchIdSequence.NextRecordId}")
 			 VALUES (0);
 			 
-			 CREATE TRIGGER "block_inserts_on_{nameof(Tables.RecordIdSequence)}"
-			 BEFORE INSERT ON "{nameof(Tables.RecordIdSequence)}"
+			 CREATE TRIGGER "block_inserts_on_{nameof(Tables.MatchIdSequence)}"
+			 BEFORE INSERT ON "{nameof(Tables.MatchIdSequence)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Inserts are not allowed on this table; only updates.');
 			 END;
 			 
-			 CREATE TRIGGER "block_deletes_on_{nameof(Tables.RecordIdSequence)}"
-			 BEFORE DELETE ON "{nameof(Tables.RecordIdSequence)}"
+			 CREATE TRIGGER "block_deletes_on_{nameof(Tables.MatchIdSequence)}"
+			 BEFORE DELETE ON "{nameof(Tables.MatchIdSequence)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Deletes are not allowed on this table; only updates.');
 			 END;
@@ -334,7 +370,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			connection);
 
 		try {
-			await createRecordIdSequenceTable.ExecuteNonQueryAsync();
+			await createMatchIdSequenceTable.ExecuteNonQueryAsync();
 		} catch {
 			return false;
 		}
@@ -345,11 +381,13 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.MatchData)}" (
 			 	"{Tables.MatchData.DeviceId}" TEXT NOT NULL,
-			 	"{Tables.MatchData.RecordId}" INTEGER NOT NULL,
+			 	"{Tables.MatchData.MatchId}" INTEGER NOT NULL,
 			 	"{Tables.MatchData.OriginalDeviceId}" TEXT NOT NULL,
 			 	"{Tables.MatchData.OriginalRecordId}" INTEGER NOT NULL,
+			 	"{Tables.MatchData.GameDeviceId}" TEXT NOT NULL,
+			 	"{Tables.MatchData.GameId}" INTEGER NOT NULL,
 			 	"{Tables.MatchData.Data}" TEXT NOT NULL,
-			 	PRIMARY KEY ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.RecordId}")
+			 	PRIMARY KEY ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.MatchId}")
 			 );
 
 			 CREATE TRIGGER "block_updates_on_{nameof(Tables.MatchData)}"
@@ -381,7 +419,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 	PRIMARY KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildRecordId}, {Tables.EditGraphVertices.ParentDeviceId}", "{Tables.EditGraphVertices.ParentRecordId}"),
 			 	
 			 	FOREIGN KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildRecordId}")
-			 		REFERENCES "{nameof(Tables.MatchData)}" ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.RecordId}")
+			 		REFERENCES "{nameof(Tables.MatchData)}" ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.MatchId}")
 			 			ON UPDATE RESTRICT
 			 			ON DELETE CASCADE,
 			 );

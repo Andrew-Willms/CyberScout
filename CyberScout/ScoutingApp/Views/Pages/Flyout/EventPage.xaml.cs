@@ -11,7 +11,7 @@ public partial class EventPage : ContentPage {
 
 	public static string Route => "Event";
 
-	public IAppManager AppManager { get; }
+	public AppManager AppManager { get; }
 
 	public ReadOnlyList<string> Events { get; } = new List<string> {
 		"Test Event",
@@ -20,9 +20,10 @@ public partial class EventPage : ContentPage {
 		"DCMP"
 	}.ToReadOnly();
 
-	public EventPage(IAppManager appManager) {
+	public EventPage(AppManagerGetter appManagerGetter) {
 
-		AppManager = appManager;
+		// TODO: add graceful error handling
+		AppManager = appManagerGetter.Instance ?? throw new AppManagerNotCreatedException(typeof(EventPage));
 
 		BindingContext = this;
 		InitializeComponent(); 

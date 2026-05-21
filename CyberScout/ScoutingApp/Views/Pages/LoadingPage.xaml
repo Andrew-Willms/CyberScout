@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 xmlns:pages="clr-namespace:ScoutingApp.Views.Pages"
+			 x:Class="ScoutingApp.Views.Pages.LoadingPage"
+			 x:DataType="pages:LoadingPage">
+
+	<ContentPage.Content>
+		
+		<VerticalStackLayout
+			HorizontalOptions="Fill"
+			Padding="10">
+
+			<ActivityIndicator
+				IsRunning="{Binding Path=IsLoading}"
+				HorizontalOptions="Center"/>
+
+			<Label
+				Text="{Binding Path=Text}"
+				HorizontalOptions="Start"/>
+
+		</VerticalStackLayout>
+
+	</ContentPage.Content>
+</ContentPage>

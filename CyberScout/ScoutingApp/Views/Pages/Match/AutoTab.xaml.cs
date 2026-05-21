@@ -12,14 +12,15 @@ public partial class AutoTab : ContentPage, INotifyPropertyChanged {
 
 	public static string Route => "Auto";
 
-	private IAppManager AppManager { get; }
+	private AppManager AppManager { get; }
 
 	public ReadOnlyList<InputDataCollector> Inputs => AppManager.ActiveMatchData.AutoTabInputs;
 
 
-	public AutoTab(IAppManager appManager) {
+	public AutoTab(AppManagerGetter appManagerGetter) {
 
-		AppManager = appManager;
+		// TODO: add graceful error handling
+		AppManager = appManagerGetter.Instance ?? throw new AppManagerNotCreatedException(typeof(AutoTab));
 		AppManager.OnMatchStarted.Subscribe(() => OnPropertyChanged(nameof(Inputs)));
 
 		BindingContext = this;

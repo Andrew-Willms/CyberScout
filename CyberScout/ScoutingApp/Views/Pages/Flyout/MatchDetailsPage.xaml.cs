@@ -20,7 +20,7 @@ public partial class MatchDetailsPage : ContentPage, INotifyPropertyChanged {
 	public const string MatchDataNavigationParameterName = nameof(MatchDataDto);
 	public const string MatchDeleterNavigationParameterName = nameof(MatchDeleter);
 
-	private IAppManager AppManager { get; }
+	private AppManager AppManager { get; }
 	private IErrorPresenter ErrorPresenter { get; }
 
 	public MatchDataDto SavedMatch {
@@ -44,9 +44,10 @@ public partial class MatchDetailsPage : ContentPage, INotifyPropertyChanged {
 
 
 
-	public MatchDetailsPage(IAppManager appManager, IErrorPresenter errorPresenter) {
+	public MatchDetailsPage(AppManagerGetter appManagerGetter, IErrorPresenter errorPresenter) {
 
-		AppManager = appManager;
+		// TODO: add graceful error handling
+		AppManager = appManagerGetter.Instance ?? throw new AppManagerNotCreatedException(typeof(MatchDetailsPage));
 		ErrorPresenter = errorPresenter;
 
 		BindingContext = this;
