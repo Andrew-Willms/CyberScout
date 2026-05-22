@@ -10,6 +10,7 @@ using Microsoft.Maui;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using ScoutingApp.AppManagement;
+using Domain.Dtos;
 
 namespace ScoutingApp.Views.Pages.Flyout; 
 
@@ -39,7 +40,7 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 		}
 	}
 
-	public ObservableCollection<MatchDataDto> SavedMatches { get; } = [];
+	public ObservableCollection<ImportMatchDataDto> SavedMatches { get; } = [];
 
 	public bool AnyMatches => SavedMatches.Any();
 
@@ -75,7 +76,7 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 
 		getMatchDataResult.Switch(
 			matchData => {
-				foreach (MatchDataDto match in matchData) {
+				foreach (ImportMatchDataDto match in matchData) {
 					SavedMatches.Add(match);
 				}
 			},
@@ -108,9 +109,9 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 		MainThread.BeginInvokeOnMainThread(() => { IsRefreshing = false; });
 	}
 
-	private async Task<bool> DeleteMatch(MatchDataDto matchData) {
+	private async Task<bool> DeleteMatch(ImportMatchDataDto importMatchData) {
 
-		return await AppManager.DataStore.DeleteMatchData(matchData);
+		return await AppManager.DataStore.DeleteMatchData(importMatchData);
 	}
 
 
@@ -153,11 +154,11 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 
 		try {
 			Button button = sender as Button ?? throw new ArgumentException("sender not valid");
-			MatchDataDto matchData = button.BindingContext as MatchDataDto ??
+			ImportMatchDataDto importMatchData = button.BindingContext as ImportMatchDataDto ??
 			                         throw new ArgumentException("sender not valid");
 
 			Dictionary<string, object> parameters = new() {
-				{ MatchDetailsPage.MatchDataNavigationParameterName, matchData },
+				{ MatchDetailsPage.MatchDataNavigationParameterName, importMatchData },
 #pragma warning disable CS8974 // Converting method group to non-delegate type
 				{ MatchDetailsPage.MatchDeleterNavigationParameterName, DeleteMatch }
 #pragma warning restore CS8974 // Converting method group to non-delegate type

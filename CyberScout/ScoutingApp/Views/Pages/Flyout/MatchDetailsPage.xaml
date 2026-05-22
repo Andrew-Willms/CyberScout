@@ -10,8 +10,8 @@
 
 	<ContentPage.Title>
 		<MultiBinding StringFormat='{}{0} Match {1}'>
-			<Binding Path="SavedMatch.MatchData.TeamNumber" />
-			<Binding Path="SavedMatch.MatchData.Match.MatchNumber" />
+			<Binding Path="SavedImportMatch.MatchData.TeamNumber" />
+			<Binding Path="SavedImportMatch.MatchData.Match.MatchNumber" />
 		</MultiBinding>
 	</ContentPage.Title>
 

@@ -1,5 +1,9 @@
-﻿using Domain.GameSpecification;
-using Domain.Serialization;
+﻿using Database.Results.Event;
+using Database.Results.GameSpec;
+using Database.Results.MatchData;
+using Database.Results.Scout;
+using Domain.Dtos;
+using Domain.GameSpecification;
 
 namespace Database;
 
@@ -7,39 +11,49 @@ namespace Database;
 
 public interface IDataStore {
 
-	public Task<List<GameSpec>> GetGameSpecs();
+	public Task<GetGameSpecsResult> GetGameSpecs();
 	
-	//public Task<bool> AddGameSpec();
+	public Task<AddNewGameSpecResult> AddNewGameSpec();
+
+	public Task<ImportGameSpecResult> ImportGameSpec();
+
+	public Task<DeleteGameSpecResult> DeleteGameSpec();
 
 
 
-	public Task<GetMatchDataResult> GetMatchData();
+	public Task<GetEventsResult> GetEvents();
 
-	public Task<AddNewMatchDataResult> AddNewMatchData(CreateMatchDataDto matchData);
+	public Task<AddNewEventResult> AddNewEvent();
 
-	public Task<AddMatchDataFromOtherDeviceResult> AddMatchDataFromOtherDevice(MatchDataDto matchData);
+	public Task<ImportEventResult> ImportEvent();
 
-	public Task<bool> DeleteMatchData(MatchDataDto matchData);
-
-	public Task<bool> DeleteAllMatchData();
-
-	//public Task<List<EventSchedule>> GetEventSchedules();
-
-	//public Task<bool> AddEventSchedule(EventSchedule eventSchedule);
+	public Task<DeleteEventResult> DeleteEvent();
 
 
 
-	//public Task<DataToSend> GetDataToSend();
+	public Task<GetMatchDataResult> GetMatchData(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true, bool ignorePatchVersion = true);
 
-	//public Task<List<KnownDevice>> GetMostRecentFromDevice();
+	public Task<AddNewMatchDataResult> AddNewMatchData(NewMatchDataDto newMatchDataDto);
 
-	//public Task<List<DomainError>> GetDomainErrors();
+	public Task<ImportMatchDataResult> ImportMatchData(ImportMatchDataDto importMatchDataDto);
+
+	public Task<AddNewEditedMatchDataResult> AddNewEditedMatchData(NewMatchDataDto newMatchDataDto);
+
+	public Task<ImportEditedMatchDataResult> ImportEditedMatchData(ImportMatchDataDto importMatchDataDto);
+
+	public Task<DeleteMatchDataResult> DeleteMatchData(ImportMatchDataDto importMatchData);
+
+	public Task<DeleteAllMatchDataResult> DeleteAllMatchData();
 
 
 
-	public Task<string?> GetLastScout();
+	public Task<GetLastScoutResult> GetLastScout();
 
-	public Task<bool> SetLastScout(string scoutName);
+	public Task<SetLastScoutResult> SetLastScout(string scoutName);
+
+
+
+	// TODO: consider storing errors and sharing them across devices 
 
 }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using Domain.Dtos;
 using Domain.Serialization;
 using Microsoft.Maui.Controls;
 using ScoutingApp.AppManagement;
@@ -10,25 +11,25 @@ namespace ScoutingApp.Views.Pages.Flyout;
 
 
 
-[QueryProperty(nameof(SavedMatch), MatchDataNavigationParameterName)]
+[QueryProperty(nameof(SavedImportMatch), MatchDataNavigationParameterName)]
 [QueryProperty(nameof(MatchDeleter), MatchDeleterNavigationParameterName)]
 public partial class MatchDetailsPage : ContentPage, INotifyPropertyChanged {
 
 	public static string Route => $"{SavedMatchesPage.Route}/MatchDetails";
 	public static string RouteFromSavedMatchesPage => "/MatchDetails";
 
-	public const string MatchDataNavigationParameterName = nameof(MatchDataDto);
+	public const string MatchDataNavigationParameterName = nameof(ImportMatchDataDto);
 	public const string MatchDeleterNavigationParameterName = nameof(MatchDeleter);
 
 	private AppManager AppManager { get; }
 	private IErrorPresenter ErrorPresenter { get; }
 
-	public MatchDataDto SavedMatch {
+	public ImportMatchDataDto SavedImportMatch {
 		get;
 		set {
 			field = value;
 			QrCodeContent = MatchDataDtoToCsv.Serialize(value);
-			OnPropertyChanged(nameof(SavedMatch));
+			OnPropertyChanged(nameof(SavedImportMatch));
 		}
 	} = null!;
 
@@ -40,7 +41,7 @@ public partial class MatchDetailsPage : ContentPage, INotifyPropertyChanged {
 		}
 	} = null!;
 
-	public Func<MatchDataDto, Task<bool>> MatchDeleter { get; init; } = null!;
+	public Func<ImportMatchDataDto, Task<bool>> MatchDeleter { get; init; } = null!;
 
 
 
@@ -60,7 +61,7 @@ public partial class MatchDetailsPage : ContentPage, INotifyPropertyChanged {
 	private async void DeleteButton_OnPressed(object? sender, EventArgs e) {
 
 		try {
-			bool success = await MatchDeleter(SavedMatch);
+			bool success = await MatchDeleter(SavedImportMatch);
 
 			if (success) {
 				await Shell.Current.GoToAsync($"//{SavedMatchesPage.Route}");
@@ -98,7 +99,7 @@ public partial class MatchDetailsPage : ContentPage, INotifyPropertyChanged {
 				}
 			}
 
-			AppManager.DiscardAndStartEditingMatch(SavedMatch);
+			AppManager.DiscardAndStartEditingMatch(SavedImportMatch);
 			await Shell.Current.GoToAsync($"//{SetupTab.Route}");
 
 		} catch (Exception exception) {

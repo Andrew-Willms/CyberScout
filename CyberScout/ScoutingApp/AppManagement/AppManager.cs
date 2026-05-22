@@ -5,12 +5,12 @@ using System.Threading.Tasks;
 using Domain.Data;
 using Domain.DataCollectors;
 using Domain.GameSpecification;
-using Domain.Serialization;
 using Database;
 using Microsoft.Maui.ApplicationModel;
 using OneOf;
 using UtilitiesLibrary.Optional;
 using Event = UtilitiesLibrary.SimpleEvent.Event;
+using Domain.Dtos;
 
 namespace ScoutingApp.AppManagement;
 
@@ -212,7 +212,7 @@ public class AppManager : INotifyPropertyChanged {
 		StartNewMatch();
 	}
 
-	public void DiscardAndStartEditingMatch(MatchDataDto matchData) {
+	public void DiscardAndStartEditingMatch(ImportMatchDataDto importMatchData) {
 
 		// todo fix this, the check is broken and returns false when it should return true I think
 		//if (!matchData.MatchData.GameSpecification.Equals(GameSpecification)) {
@@ -220,17 +220,17 @@ public class AppManager : INotifyPropertyChanged {
 		//}
 
 		ActiveMatchData = new(GameSpecification) {
-			MatchNumber = matchData.MatchData.Match.MatchNumber,
-			ReplayNumber = matchData.MatchData.Match.ReplayNumber,
-			MatchType = matchData.MatchData.Match.Type,
-			TeamNumber = matchData.MatchData.TeamNumber,
-			Alliance = matchData.MatchData.AllianceIndex,
-			EditOf = (matchData.DeviceId, matchData.RecordId)
+			MatchNumber = importMatchData.MatchData.Match.MatchNumber,
+			ReplayNumber = importMatchData.MatchData.Match.ReplayNumber,
+			MatchType = importMatchData.MatchData.Match.Type,
+			TeamNumber = importMatchData.MatchData.TeamNumber,
+			Alliance = importMatchData.MatchData.AllianceIndex,
+			EditOf = (importMatchData.DeviceId, importMatchData.RecordId)
 		};
 
 		for (int i = 0; i < GameSpecification.DataFields.Count; i++) {
 
-			switch (ActiveMatchData.DataFields[i], matchData.MatchData.DataFields[i]) {
+			switch (ActiveMatchData.DataFields[i], importMatchData.MatchData.DataFields[i]) {
 				case (BooleanDataField booleanDataField, bool boolValue):
 					booleanDataField.Value = boolValue;
 					break;

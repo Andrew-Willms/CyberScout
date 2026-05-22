@@ -1,4 +1,5 @@
 ﻿using Domain.Data;
+using Domain.Dtos;
 using Domain.Serialization;
 
 namespace Domain.Tests.Serialization;
@@ -26,34 +27,34 @@ public class MatchDataToCsvTests {
 	[ClassData(typeof(SampleData))]
 	public void TestDtoSerialization(MatchData matchData) {
 
-		MatchDataDto matchDataDto = new() {
+		ImportMatchDataDto importMatchDataDto = new() {
 			MatchData = matchData,
 			DeviceId = "deviceId",
 			RecordId = 1,
 			EditBasedOn = null
 		};
 
-		string serialized = MatchDataDtoToCsv.Serialize(matchDataDto);
-		MatchDataDto? deserialized = MatchDataDtoToCsv.Deserialize(serialized, SampleData.GameSpec);
+		string serialized = MatchDataDtoToCsv.Serialize(importMatchDataDto);
+		ImportMatchDataDto? deserialized = MatchDataDtoToCsv.Deserialize(serialized, SampleData.GameSpec);
 
-		Assert.True(matchDataDto.Equals(deserialized));
+		Assert.True(importMatchDataDto.Equals(deserialized));
 	}
 
 	[Theory]
 	[ClassData(typeof(SampleData))]
 	public void TestDtoSerialization_2(MatchData matchData) {
 
-		MatchDataDto matchDataDto = new() {
+		ImportMatchDataDto importMatchDataDto = new() {
 			MatchData = matchData,
 			DeviceId = "deviceId",
 			RecordId = 2,
 			EditBasedOn = ("deviceId", 1)
 		};
 
-		string serialized = MatchDataDtoToCsv.Serialize(matchDataDto);
-		MatchDataDto? deserialized = MatchDataDtoToCsv.Deserialize(serialized, SampleData.GameSpec);
+		string serialized = MatchDataDtoToCsv.Serialize(importMatchDataDto);
+		ImportMatchDataDto? deserialized = MatchDataDtoToCsv.Deserialize(serialized, SampleData.GameSpec);
 
-		Assert.True(matchDataDto.Equals(deserialized));
+		Assert.True(importMatchDataDto.Equals(deserialized));
 	}
 
 }

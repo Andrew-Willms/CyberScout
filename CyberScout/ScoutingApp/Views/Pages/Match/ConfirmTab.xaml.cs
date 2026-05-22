@@ -5,7 +5,6 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Domain.DataCollectors;
-using Domain.Serialization;
 using Database;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
@@ -13,6 +12,7 @@ using ScoutingApp.AppManagement;
 using ScoutingApp.Views.Pages.Flyout;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Optional;
+using Domain.Dtos;
 
 namespace ScoutingApp.Views.Pages.Match; 
 
@@ -130,8 +130,8 @@ public partial class ConfirmTab : ContentPage, INotifyPropertyChanged {
 #endif
 
 			GetMatchDataResult getMatchDataResult = await AppManager.DataStore.GetMatchData();
-			List<MatchDataDto>? allData = getMatchDataResult.IsT0 ? getMatchDataResult.AsT0 : null;
-			MatchDataDto? mostRecentMatch = allData?.Where(x => x.DeviceId == deviceId).MaxBy(x => x.RecordId);
+			List<ImportMatchDataDto>? allData = getMatchDataResult.IsT0 ? getMatchDataResult.AsT0 : null;
+			ImportMatchDataDto? mostRecentMatch = allData?.Where(x => x.DeviceId == deviceId).MaxBy(x => x.RecordId);
 
 			// TODO: This seems like bad error handling
 			if (mostRecentMatch is null) {
@@ -197,9 +197,9 @@ public partial class ConfirmTab : ContentPage, INotifyPropertyChanged {
 
 
 
-	private async Task<bool> DeleteMatch(MatchDataDto matchData) {
+	private async Task<bool> DeleteMatch(ImportMatchDataDto importMatchData) {
 
-		return await AppManager.DataStore.DeleteMatchData(matchData);
+		return await AppManager.DataStore.DeleteMatchData(importMatchData);
 	}
 
 

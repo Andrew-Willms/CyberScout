@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Drawing;
 using Domain.Data;
+using Domain.Dtos;
 using Domain.GameSpecification;
 using Domain.Serialization;
 using Microsoft.Data.Sqlite;
@@ -80,7 +81,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			public const string DeviceId = "DeviceId";
 			public const string MatchId = "MatchId";
 			public const string OriginalDeviceId = "OriginalDeviceId";
-			public const string OriginalRecordId = "OriginalRecordId";
+			public const string OriginalMatchId = "OriginalMatchId";
 			public const string GameDeviceId = "GameDeviceId";
 			public const string GameId = "GameId";
 			public const string Data = "Data";
@@ -88,11 +89,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		public static class EditGraphVertices {
 			public const string ChildDeviceId = "ChildDeviceId";
-			public const string ChildRecordId = "ChildRecordId";
+			public const string ChildMatchId = "ChildMatchId";
 			public const string ParentDeviceId = "ParentDeviceId";
-			public const string ParentRecordId = "ParentRecordId";
+			public const string ParentMatchId = "ParentMatchId";
 			public const string OriginalDeviceId = "OriginalDeviceId";
-			public const string OriginalRecordId = "OriginalRecordId";
+			public const string OriginalMatchId = "OriginalMatchId";
 			public const string Comment = "Comment";
 		}
 
@@ -383,7 +384,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 	"{Tables.MatchData.DeviceId}" TEXT NOT NULL,
 			 	"{Tables.MatchData.MatchId}" INTEGER NOT NULL,
 			 	"{Tables.MatchData.OriginalDeviceId}" TEXT NOT NULL,
-			 	"{Tables.MatchData.OriginalRecordId}" INTEGER NOT NULL,
+			 	"{Tables.MatchData.OriginalMatchId}" INTEGER NOT NULL,
 			 	"{Tables.MatchData.GameDeviceId}" TEXT NOT NULL,
 			 	"{Tables.MatchData.GameId}" INTEGER NOT NULL,
 			 	"{Tables.MatchData.Data}" TEXT NOT NULL,
@@ -409,16 +410,16 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EditGraphVertices)}" (
 			 	"{Tables.EditGraphVertices.ChildDeviceId}" TEXT NOT NULL,
-			 	"{Tables.EditGraphVertices.ChildRecordId}" INTEGER NOT NULL,
+			 	"{Tables.EditGraphVertices.ChildMatchId}" INTEGER NOT NULL,
 			 	"{Tables.EditGraphVertices.ParentDeviceId}" TEXT NOT NULL,
-			 	"{Tables.EditGraphVertices.ParentRecordId}" INTEGER NOT NULL,
+			 	"{Tables.EditGraphVertices.ParentMatchId}" INTEGER NOT NULL,
 			 	"{Tables.EditGraphVertices.OriginalDeviceId}" TEXT NOT NULL,
-			 	"{Tables.EditGraphVertices.OriginalRecordId}" INTEGER NOT NULL,
+			 	"{Tables.EditGraphVertices.OriginalMatchId}" INTEGER NOT NULL,
 			 	"{Tables.EditGraphVertices.Comment}" TEXT,
 			 	
-			 	PRIMARY KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildRecordId}, {Tables.EditGraphVertices.ParentDeviceId}", "{Tables.EditGraphVertices.ParentRecordId}"),
+			 	PRIMARY KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildMatchId}, {Tables.EditGraphVertices.ParentDeviceId}", "{Tables.EditGraphVertices.ParentMatchId}"),
 			 	
-			 	FOREIGN KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildRecordId}")
+			 	FOREIGN KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildMatchId}")
 			 		REFERENCES "{nameof(Tables.MatchData)}" ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.MatchId}")
 			 			ON UPDATE RESTRICT
 			 			ON DELETE CASCADE,
@@ -572,6 +573,22 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		});
 	}
 
+	public async Task<bool> AddNewGameSpec() {
+		throw new NotImplementedException();
+	}
+
+	public async Task<bool> ImportGameSpec() {
+		throw new NotImplementedException();
+	}
+
+	public async Task<bool> DeleteGameSpec() {
+		throw new NotImplementedException();
+	}
+
+
+
+
+
 	public async Task<GetMatchDataResult> GetMatchData() {
 
 		SqliteCommand getMatchDataCommand = new(
@@ -587,7 +604,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		GameSpec gameSpec = (await GetGameSpecs()).FirstOrDefault() ?? throw new UnreachableException(); // todo
 
-		List<MatchDataDto> allMatchDtos = [];
+		List<ImportMatchDataDto> allMatchDtos = [];
 		while (reader.Read()) {
 
 			string deviceId = reader.GetString(0);
@@ -638,9 +655,9 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		// Identify all the match data that are original (not edits of existing match data).
 		// Create an "Edit Chain" for each original match (starting with the original match itself).
-		List<List<MatchDataDto>> editChains = allMatchDtos
+		List<List<ImportMatchDataDto>> editChains = allMatchDtos
 			.Where(x => x.EditBasedOn is null)
-			.Select(x => new List<MatchDataDto> { x })
+			.Select(x => new List<ImportMatchDataDto> { x })
 			.ToList();
 
 		// Iterate over all match data that is an edit of prior match data.
@@ -650,13 +667,13 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		// A first degree edit is an edit of the original data, a second degree edit is an edit of a first degree edit, etc.
 		// This implementation also doesn't work with things like edit trees.
 
-		List<MatchDataDto> unlinkedEditData = allMatchDtos.Where(x => x.EditBasedOn is not null).ToList();
+		List<ImportMatchDataDto> unlinkedEditData = allMatchDtos.Where(x => x.EditBasedOn is not null).ToList();
 		int lastCountOfUnlinkedEditData = unlinkedEditData.Count;
 		while (true) {
 
-			foreach (MatchDataDto editData in unlinkedEditData) {
+			foreach (ImportMatchDataDto editData in unlinkedEditData) {
 
-				List<MatchDataDto>? activeEditChain = editChains.FirstOrDefault(x =>
+				List<ImportMatchDataDto>? activeEditChain = editChains.FirstOrDefault(x =>
 					x.Count > 0 && // should be guaranteed
 					(x.Last().DeviceId, x.Last().RecordId) == editData.EditBasedOn);
 
@@ -734,9 +751,9 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return new Success();
 	}
 
-	public async Task<AddMatchDataFromOtherDeviceResult> AddMatchDataFromOtherDevice(MatchDataDto matchData) {
+	public async Task<ImportMatchDataResult> ImportMatchData(ImportMatchDataDto importMatchData) {
 
-		string data = MatchDataToCsv.Serialize(matchData.MatchData).Replace("\'", "\'\'");
+		string data = MatchDataToCsv.Serialize(importMatchData.MatchData).Replace("\'", "\'\'");
 
 		// TODO: consider parameterized queries? less room for SQL injections??
 		// TODO: strings are wrapped in 'string' but ints shouldn't be????
@@ -752,11 +769,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     "{Tables.MatchData.Data}"
 			 )
 			 VALUES (
-			     '{matchData.DeviceId}',
-			     '{matchData.RecordId}',
+			     '{importMatchData.DeviceId}',
+			     '{importMatchData.RecordId}',
 			     '{data}',
-			     {(matchData.EditBasedOn is null ? "NULL" : $"'{matchData.EditBasedOn?.DeviceId}'")},
-			     {(matchData.EditBasedOn is null ? "NULL" : $"'{matchData.EditBasedOn?.RecordId}'")}
+			     {(importMatchData.EditBasedOn is null ? "NULL" : $"'{importMatchData.EditBasedOn?.DeviceId}'")},
+			     {(importMatchData.EditBasedOn is null ? "NULL" : $"'{importMatchData.EditBasedOn?.RecordId}'")}
 			 );
 			 INSERT INTO "{nameof(Tables.UnifiedRecords)}" (
 			     "{Tables.UnifiedRecords.DeviceId}",
@@ -765,8 +782,8 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     "{Tables.UnifiedRecords.TimeCreated}"
 			 )
 			 VALUES (
-			     '{matchData.DeviceId}',
-			     '{matchData.RecordId}',
+			     '{importMatchData.DeviceId}',
+			     '{importMatchData.RecordId}',
 			     '{nameof(Tables.MatchData)}',
 			     'TimeCreated'
 			 );
@@ -801,14 +818,14 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return new Success();
 	}
 
-	public async Task<bool> DeleteMatchData(MatchDataDto matchData) {
+	public async Task<bool> DeleteMatchData(ImportMatchDataDto importMatchData) {
 
 		SqliteCommand deleteMatchDataCommand = new(
 			$"""
 			 BEGIN TRANSACTION;
 			 DELETE FROM "{nameof(Tables.MatchData)}"
-			 WHERE "{Tables.MatchData.DeviceId}" = '{matchData.DeviceId}' AND
-			       "{Tables.MatchData.MatchId}" = '{matchData.RecordId}';
+			 WHERE "{Tables.MatchData.DeviceId}" = '{importMatchData.DeviceId}' AND
+			       "{Tables.MatchData.MatchId}" = '{importMatchData.RecordId}';
 			 COMMIT;
 			 """,
 			Connection);

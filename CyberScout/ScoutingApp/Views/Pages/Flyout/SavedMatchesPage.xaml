@@ -44,7 +44,7 @@
 				ItemsLayout="VerticalGrid, 1">
 
 				<CollectionView.ItemTemplate>
-					<DataTemplate x:DataType="serialization:MatchDataDto">
+					<DataTemplate x:DataType="serialization:ImportMatchDataDto">
 						<Grid Margin="0">
 
 							<Grid.ColumnDefinitions>

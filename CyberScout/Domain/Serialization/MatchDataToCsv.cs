@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Domain.Data;
+using Domain.Dtos;
 using Domain.GameSpecification;
 using OneOf;
 using UtilitiesLibrary.Collections;
@@ -352,37 +353,37 @@ public static class MatchDataDtoToCsv {
 		return stringBuilder.ToString();
 	}
 
-	public static string Serialize(MatchDataDto matchData) {
+	public static string Serialize(ImportMatchDataDto importMatchData) {
 
-		StringBuilder stringBuilder = new(matchData.DeviceId);
+		StringBuilder stringBuilder = new(importMatchData.DeviceId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.RecordId);
+		stringBuilder.Append(importMatchData.RecordId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.EditBasedOn?.DeviceId);
+		stringBuilder.Append(importMatchData.EditBasedOn?.DeviceId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.EditBasedOn?.RecordId);
+		stringBuilder.Append(importMatchData.EditBasedOn?.RecordId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.MatchData.ScoutName.ToCsvFriendly());
+		stringBuilder.Append(importMatchData.MatchData.ScoutName.ToCsvFriendly());
 		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.MatchData.EventCode);
+		stringBuilder.Append(importMatchData.MatchData.EventCode);
 		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.MatchData.Match.MatchNumber);
+		stringBuilder.Append(importMatchData.MatchData.Match.MatchNumber);
 		stringBuilder.Append(',');
-		stringBuilder.Append((int)matchData.MatchData.Match.Type);
+		stringBuilder.Append((int)importMatchData.MatchData.Match.Type);
 		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.MatchData.Match.ReplayNumber);
+		stringBuilder.Append(importMatchData.MatchData.Match.ReplayNumber);
 		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.MatchData.AllianceIndex);
+		stringBuilder.Append(importMatchData.MatchData.AllianceIndex);
 		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.MatchData.TeamNumber);
+		stringBuilder.Append(importMatchData.MatchData.TeamNumber);
 		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.MatchData.StartTime.ToString("o").ToCsvFriendly());
+		stringBuilder.Append(importMatchData.MatchData.StartTime.ToString("o").ToCsvFriendly());
 		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.MatchData.EndTime.ToString("o").ToCsvFriendly());
+		stringBuilder.Append(importMatchData.MatchData.EndTime.ToString("o").ToCsvFriendly());
 
-		for (int i = 0; i < matchData.MatchData.DataFields.Count; i++) {
+		for (int i = 0; i < importMatchData.MatchData.DataFields.Count; i++) {
 
-			switch (matchData.MatchData.GameSpecification.DataFields[i], matchData.MatchData.DataFields[i]) {
+			switch (importMatchData.MatchData.GameSpecification.DataFields[i], importMatchData.MatchData.DataFields[i]) {
 				case (BooleanDataFieldSpec, bool value): {
 					stringBuilder.Append(value ? ",1" : ",0");
 					break;
@@ -426,7 +427,7 @@ public static class MatchDataDtoToCsv {
 		return stringBuilder.ToString();
 	}
 
-	public static MatchDataDto? Deserialize(string matchData, GameSpec gameSpecification) {
+	public static ImportMatchDataDto? Deserialize(string matchData, GameSpec gameSpecification) {
 
 		List<string> columns = matchData.SplitTextToCsvColumns();
 

@@ -4,12 +4,12 @@ using System.Drawing;
 using System.Threading.Tasks;
 using Domain.Data;
 using Domain.GameSpecification;
-using Domain.Serialization;
 using Database;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Optional;
 using UtilitiesLibrary.Results;
 using Database.Sqlite;
+using Domain.Dtos;
 
 namespace QuickTestingApplication;
 
@@ -63,7 +63,7 @@ public class Program {
 			throw new();
 		}
 
-		foreach (MatchDataDto matchDataDto in matchData.AsT0) {
+		foreach (ImportMatchDataDto matchDataDto in matchData.AsT0) {
 
 			Console.WriteLine(matchDataDto);
 		}
