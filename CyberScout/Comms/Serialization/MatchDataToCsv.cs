@@ -3,15 +3,16 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using Comms.Dtos;
 using Domain.Data;
-using Domain.Dtos;
 using Domain.GameSpecification;
 using OneOf;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.MiscExtensions;
 using UtilitiesLibrary.Optional;
 
-namespace Domain.Serialization;
+namespace Comms.Serialization;
+
 
 
 [GenerateOneOf]

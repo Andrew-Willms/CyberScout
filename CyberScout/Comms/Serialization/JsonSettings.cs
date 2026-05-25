@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Domain.Serialization; 
+namespace Comms.Serialization; 
 
 
 
