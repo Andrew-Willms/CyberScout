@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
 using Domain.Data;
 
-namespace Domain.Dtos;
+namespace Comms.Dtos;
 
 
 
-public class MatchDataGetDto {
+public record ImportEditedMatchDataDto {
 
 	public required MatchData MatchData { get; init; }
 
@@ -17,7 +17,7 @@ public class MatchDataGetDto {
 
 	public required uint OriginalMatchId { get; init; }
 
-	public required List<(string deviceId, uint matchId)> Parents { get; init; }
+	public required List<(string deviceId, uint matchId)> OtherParents { get; init; }
 
 	public required string GameDeviceId { get; init; }
 
@@ -25,10 +25,10 @@ public class MatchDataGetDto {
 
 
 
-	private MatchDataGetDto() { }
+	private ImportEditedMatchDataDto() { }
 
-	// todo: proper errors
-	public static MatchDataGetDto? Create(
+	// todo: propper errors
+	public static ImportEditedMatchDataDto? Create(
 		MatchData matchData,
 		string deviceId,
 		uint matchId,
@@ -43,13 +43,8 @@ public class MatchDataGetDto {
 			return null;
 		}
 
-		// If the current match is the original match there must be no parents.
-		if (deviceId == originalDeviceId && matchId == originalMatchId && parents.Count != 0) {
-			return null;
-		}
-
-		// If the current match isn't the original match there must be at least one parent.
-		if ((deviceId != originalDeviceId || matchId != originalMatchId) && parents.Count == 0) {
+		// There must be at least one parent.
+		if (parents.Count == 0) {
 			return null;
 		}
 
@@ -72,7 +67,7 @@ public class MatchDataGetDto {
 			MatchId = matchId,
 			OriginalDeviceId = originalDeviceId,
 			OriginalMatchId = originalMatchId,
-			Parents = parents,
+			OtherParents = parents,
 			GameDeviceId = gameDeviceId,
 			GameId = gameId
 		};

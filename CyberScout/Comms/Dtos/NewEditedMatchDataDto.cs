@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Domain.Data;
 
-namespace Domain.Dtos;
+namespace Comms.Dtos;
 
 
 
