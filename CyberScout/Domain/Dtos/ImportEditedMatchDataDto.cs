@@ -17,10 +17,6 @@ public record ImportEditedMatchDataDto {
 
 	public required uint OriginalMatchId { get; init; }
 
-	public required string FirstParentDeviceId { get; init; }
-
-	public required uint FirstParentMatchId { get; init; }
-
 	public required List<(string deviceId, uint matchId)> OtherParents { get; init; }
 
 	public required string GameDeviceId { get; init; }
@@ -31,17 +27,39 @@ public record ImportEditedMatchDataDto {
 
 	private ImportEditedMatchDataDto() { }
 
-	public static ImportEditedMatchDataDto Create(
+	// todo: propper errors
+	public static ImportEditedMatchDataDto? Create(
 		MatchData matchData,
 		string deviceId,
 		uint matchId,
 		string originalDeviceId,
 		uint originalMatchId,
-		string firstParentDeviceId,
-		uint firstParentMatchId,
-		List<(string deviceId, uint matchId)> otherParents,
+		List<(string deviceId, uint matchId)> parents,
 		string gameDeviceId,
 		uint gameId) {
+
+		// The current match cannot be before the original match.
+		if (deviceId == originalDeviceId && matchId < originalMatchId) {
+			return null;
+		}
+
+		// There must be at least one parent.
+		if (parents.Count == 0) {
+			return null;
+		}
+
+		foreach ((string deviceId, uint matchId) parent in parents) {
+
+			// The current match cannot be before a parent match.
+			if (deviceId == parent.deviceId && matchId < parent.matchId) {
+				return null;
+			}
+
+			// A parent match cannot be before the original match.
+			if (parent.deviceId == originalDeviceId && parent.matchId < originalMatchId) {
+				return null;
+			}
+		}
 
 		return new() {
 			MatchData = matchData,
@@ -49,9 +67,7 @@ public record ImportEditedMatchDataDto {
 			MatchId = matchId,
 			OriginalDeviceId = originalDeviceId,
 			OriginalMatchId = originalMatchId,
-			FirstParentDeviceId = firstParentDeviceId,
-			FirstParentMatchId = firstParentMatchId,
-			OtherParents = otherParents,
+			OtherParents = parents,
 			GameDeviceId = gameDeviceId,
 			GameId = gameId
 		};

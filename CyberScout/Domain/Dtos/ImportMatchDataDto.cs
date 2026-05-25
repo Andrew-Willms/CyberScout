@@ -18,22 +18,23 @@ public record ImportMatchDataDto {
 
 
 
-	private ImportMatchDataDto() { }
-
-	public static ImportMatchDataDto Create(
-		MatchData matchData,
-		string deviceId,
-		uint matchId,
-		string gameDeviceId,
-		uint gameId) {
-
-		return new() {
-			MatchData = matchData,
-			DeviceId = deviceId,
-			MatchId = matchId,
-			GameDeviceId = gameDeviceId,
-			GameId = gameId
-		};
-	}
+	// Create method for if I need additional data validation
+	//private ImportMatchDataDto() { }
+	//
+	//public static ImportMatchDataDto Create(
+	//	MatchData matchData,
+	//	string deviceId,
+	//	uint matchId,
+	//	string gameDeviceId,
+	//	uint gameId) {
+	//
+	//	return new() {
+	//		MatchData = matchData,
+	//		DeviceId = deviceId,
+	//		MatchId = matchId,
+	//		GameDeviceId = gameDeviceId,
+	//		GameId = gameId
+	//	};
+	//}
 
 }

@@ -15,11 +15,7 @@ public class NewEditedMatchDataDto {
 
 	public required uint OriginalMatchId { get; init; }
 
-	public required string FirstParentDeviceId { get; init; }
-
-	public required uint FirstParentMatchId { get; init; }
-
-	public required List<(string deviceId, uint matchId)> OtherParents { get; init; }
+	public required List<(string deviceId, uint matchId)> Parents { get; init; }
 
 	public required string GameDeviceId { get; init; }
 
@@ -29,25 +25,34 @@ public class NewEditedMatchDataDto {
 
 	private NewEditedMatchDataDto() { }
 
-	public static NewEditedMatchDataDto Create(
+	public static NewEditedMatchDataDto? Create(
 		MatchData matchData,
 		string deviceId,
 		string originalDeviceId,
 		uint originalMatchId,
-		string firstParentDeviceId,
-		uint firstParentMatchId,
-		List<(string deviceId, uint matchId)> otherParents,
+		List<(string deviceId, uint matchId)> parents,
 		string gameDeviceId,
 		uint gameId) {
+
+		// There must be at least one parent.
+		if (parents.Count == 0) {
+			return null;
+		}
+
+		foreach ((string deviceId, uint matchId) parent in parents) {
+
+			// A parent match cannot be before the original match.
+			if (parent.deviceId == originalDeviceId && parent.matchId < originalMatchId) {
+				return null;
+			}
+		}
 
 		return new() {
 			MatchData = matchData,
 			DeviceId = deviceId,
 			OriginalDeviceId = originalDeviceId,
 			OriginalMatchId = originalMatchId,
-			FirstParentDeviceId = firstParentDeviceId,
-			FirstParentMatchId = firstParentMatchId,
-			OtherParents = otherParents,
+			Parents = parents,
 			GameDeviceId = gameDeviceId,
 			GameId = gameId
 		};
