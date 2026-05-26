@@ -5,7 +5,7 @@ namespace Comms.Dtos;
 
 
 
-public record ImportEditedMatchDataDto {
+public class MatchDataDto {
 
 	public required MatchData MatchData { get; init; }
 
@@ -17,7 +17,7 @@ public record ImportEditedMatchDataDto {
 
 	public required uint OriginalMatchId { get; init; }
 
-	public required List<(string deviceId, uint matchId)> OtherParents { get; init; }
+	public required List<(string deviceId, uint matchId)> Parents { get; init; }
 
 	public required string GameDeviceId { get; init; }
 
@@ -25,10 +25,10 @@ public record ImportEditedMatchDataDto {
 
 
 
-	private ImportEditedMatchDataDto() { }
+	private MatchDataDto() { }
 
-	// todo: propper errors
-	public static ImportEditedMatchDataDto? Create(
+	// todo: proper errors
+	public static MatchDataDto? Create(
 		MatchData matchData,
 		string deviceId,
 		uint matchId,
@@ -43,8 +43,13 @@ public record ImportEditedMatchDataDto {
 			return null;
 		}
 
-		// There must be at least one parent.
-		if (parents.Count == 0) {
+		// If the current match is the original match there must be no parents.
+		if (deviceId == originalDeviceId && matchId == originalMatchId && parents.Count != 0) {
+			return null;
+		}
+
+		// If the current match isn't the original match there must be at least one parent.
+		if ((deviceId != originalDeviceId || matchId != originalMatchId) && parents.Count == 0) {
 			return null;
 		}
 
@@ -67,7 +72,7 @@ public record ImportEditedMatchDataDto {
 			MatchId = matchId,
 			OriginalDeviceId = originalDeviceId,
 			OriginalMatchId = originalMatchId,
-			OtherParents = parents,
+			Parents = parents,
 			GameDeviceId = gameDeviceId,
 			GameId = gameId
 		};

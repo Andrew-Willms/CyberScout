@@ -1,8 +1,8 @@
-﻿using Database.Results.Event;
+﻿using Comms.Dtos;
+using Database.Results.Event;
 using Database.Results.GameSpec;
 using Database.Results.MatchData;
 using Database.Results.Scout;
-using Domain.Dtos;
 using Domain.GameSpecification;
 
 namespace Database;

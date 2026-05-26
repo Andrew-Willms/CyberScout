@@ -1,5 +1,5 @@
-﻿using Domain.Dtos;
-using Domain.Serialization;
+﻿using Comms.Dtos;
+using Comms.Serialization;
 using OneOf;
 
 namespace Database.Results.MatchData;
@@ -8,7 +8,7 @@ namespace Database.Results.MatchData;
 
 [GenerateOneOf]
 public partial class GetMatchDataResult : OneOfBase<
-	List<MatchDataGetDto>,
+	List<MatchDataDto>,
 	Exception,
 	MatchDataDeserializationError,
 	InvalidEditIdsError

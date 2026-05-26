@@ -15,17 +15,18 @@ public class MatchData : IEquatable<MatchData> {
 
 	public GameSpec GameSpecification { get; private init; }
 
-	public string? EventCode { get; private init; }
-
 	public string ScoutName { get; private init; }
+
+	public string? EventCode { get; private init; }
 
 	public Match Match { get; private init; }
 
-	public uint TeamNumber { get; private init; }
-
 	public uint AllianceIndex { get; private init; }
 
+	public uint TeamNumber { get; private init; }
+
 	public DateTime StartTime { get; private init; }
+
 	public DateTime EndTime { get; private init; }
 
 	public ReadOnlyList<object> DataFields { get; private init; }

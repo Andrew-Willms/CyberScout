@@ -1,6 +1,7 @@
-﻿using Domain.Data;
-using Domain.Dtos;
-using Domain.Serialization;
+﻿using Comms.Dtos;
+using Comms.Serialization;
+using Domain.Data;
+using MatchDataDeserializationResult = Domain.Serialization.MatchDataDeserializationResult;
 
 namespace Domain.Tests.Serialization;
 
