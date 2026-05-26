@@ -2,7 +2,10 @@
 using System.Drawing;
 using Comms.Dtos;
 using Comms.Serialization;
+using Database.Results.Event;
+using Database.Results.GameSpec;
 using Database.Results.MatchData;
+using Database.Results.Scout;
 using Domain.Data;
 using Domain.GameSpecification;
 using Microsoft.Data.Sqlite;
@@ -450,7 +453,88 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 
 
-	public Task<List<GameSpec>> GetGameSpecs() {
+
+	public Task<GetGameSpecsResult> GetGameSpecs() {
+		throw new NotImplementedException();
+	}
+
+	public Task<AddNewGameSpecResult> AddNewGameSpec() {
+		throw new NotImplementedException();
+	}
+
+	public Task<ImportGameSpecResult> ImportGameSpec() {
+		throw new NotImplementedException();
+	}
+
+	public Task<DeleteGameSpecResult> DeleteGameSpec() {
+		throw new NotImplementedException();
+	}
+
+
+
+	public Task<GetEventsResult> GetEvents() {
+		throw new NotImplementedException();
+	}
+
+	public Task<AddNewEventResult> AddNewEvent() {
+		throw new NotImplementedException();
+	}
+
+	public Task<ImportEventResult> ImportEvent() {
+		throw new NotImplementedException();
+	}
+
+	public Task<DeleteEventResult> DeleteEvent() {
+		throw new NotImplementedException();
+	}
+
+
+
+	public Task<GetMatchDataResult> GetMatchData(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true,
+		bool ignorePatchVersion = true) {
+		throw new NotImplementedException();
+	}
+
+	public Task<AddNewMatchDataResult> AddNewMatchData(NewMatchDataDto newMatchDataDto) {
+		throw new NotImplementedException();
+	}
+
+	public Task<AddNewEditedMatchDataResult> AddNewEditedMatchData(NewMatchDataDto newMatchDataDto) {
+		throw new NotImplementedException();
+	}
+
+	public Task<ImportMatchDataResult> ImportMatchData(MatchDataDto importMatchDataDto) {
+		throw new NotImplementedException();
+	}
+
+	public Task<DeleteMatchDataResult> DeleteMatchData(MatchDataDto importMatchData) {
+		throw new NotImplementedException();
+	}
+
+	public Task<DeleteMatchDataResult> DeleteMatchDataFromEvent() {
+		throw new NotImplementedException();
+	}
+
+	public Task<DeleteMatchDataResult> DeleteMatchDataFromGame() {
+		throw new NotImplementedException();
+	}
+
+	public Task<DeleteAllMatchDataResult> DeleteAllMatchData() {
+		throw new NotImplementedException();
+	}
+
+
+
+	public Task<GetLastScoutResult> GetLastScout() {
+		throw new NotImplementedException();
+	}
+
+	public Task<SetLastScoutResult> SetLastScout(string scoutName) {
+		throw new NotImplementedException();
+	}
+
+
+	public Task<List<GameSpec>> Old_GetGameSpecs() {
 
 		IResult<GameSpec> result = GameSpec.Create(
 			name: "Rebuilt",
@@ -574,23 +658,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		});
 	}
 
-	public async Task<bool> AddNewGameSpec() {
-		throw new NotImplementedException();
-	}
-
-	public async Task<bool> ImportGameSpec() {
-		throw new NotImplementedException();
-	}
-
-	public async Task<bool> DeleteGameSpec() {
-		throw new NotImplementedException();
-	}
-
-
-
-
-
-	public async Task<GetMatchDataResult> GetMatchData() {
+	public async Task<GetMatchDataResult> Old_GetMatchData() {
 
 		SqliteCommand getMatchDataCommand = new(
 			$"SELECT * FROM \"{nameof(Tables.MatchData)}\";",
@@ -693,7 +761,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return editChains.Select(x => x.Last()).ToList();
 	}
 
-	public async Task<AddNewMatchDataResult> AddNewMatchData(CreateMatchDataDto matchData) {
+	public async Task<AddNewMatchDataResult> Old_AddNewMatchData(CreateMatchDataDto matchData) {
 
 		string data = MatchDataToCsv.Serialize(matchData.MatchData).Replace("\'", "\'\'");
 
@@ -752,7 +820,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return new Success();
 	}
 
-	public async Task<ImportMatchDataResult> ImportMatchData(ImportMatchDataDto importMatchData) {
+	public async Task<ImportMatchDataResult> Old_ImportMatchData(ImportMatchDataDto importMatchData) {
 
 		string data = MatchDataToCsv.Serialize(importMatchData.MatchData).Replace("\'", "\'\'");
 
@@ -819,7 +887,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return new Success();
 	}
 
-	public async Task<bool> DeleteMatchData(ImportMatchDataDto importMatchData) {
+	public async Task<bool> Old_DeleteMatchData(ImportMatchDataDto importMatchData) {
 
 		SqliteCommand deleteMatchDataCommand = new(
 			$"""
@@ -841,7 +909,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return true;
 	}
 
-	public async Task<bool> DeleteAllMatchData() {
+	public async Task<bool> Old_DeleteAllMatchData() {
 
 		SqliteCommand deleteMatchDataCommand = new(
 			$"""
@@ -861,7 +929,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return true;
 	}
 
-	public async Task<string?> GetLastScout() {
+	public async Task<string?> Old_GetLastScout() {
 
 		SqliteCommand command = new(
 			$"SELECT \"{Tables.Scout.Name}\" FROM \"{nameof(Tables.Scout)}\" WHERE ROWID = 1;",
@@ -878,7 +946,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 	}
 
-	public async Task<bool> SetLastScout(string scoutName) {
+	public async Task<bool> Old_SetLastScout(string scoutName) {
 
 		// TODO better SQL sanitization (here and above)
 		if (scoutName.Contains('\'')) {

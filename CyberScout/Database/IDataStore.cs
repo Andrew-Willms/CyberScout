@@ -35,13 +35,15 @@ public interface IDataStore {
 
 	public Task<AddNewMatchDataResult> AddNewMatchData(NewMatchDataDto newMatchDataDto);
 
-	public Task<ImportMatchDataResult> ImportMatchData(ImportMatchDataDto importMatchDataDto);
-
 	public Task<AddNewEditedMatchDataResult> AddNewEditedMatchData(NewMatchDataDto newMatchDataDto);
 
-	public Task<ImportEditedMatchDataResult> ImportEditedMatchData(ImportMatchDataDto importMatchDataDto);
+	public Task<ImportMatchDataResult> ImportMatchData(MatchDataDto importMatchDataDto);
 
-	public Task<DeleteMatchDataResult> DeleteMatchData(ImportMatchDataDto importMatchData);
+	public Task<DeleteMatchDataResult> DeleteMatchData(MatchDataDto importMatchData);
+
+	public Task<DeleteMatchDataResult> DeleteMatchDataFromEvent();
+
+	public Task<DeleteMatchDataResult> DeleteMatchDataFromGame();
 
 	public Task<DeleteAllMatchDataResult> DeleteAllMatchData();
 
