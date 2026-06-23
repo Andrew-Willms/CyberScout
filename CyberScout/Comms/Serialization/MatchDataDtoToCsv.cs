@@ -18,12 +18,12 @@ public static class MatchDataDtoToCsv {
 
 	private static readonly string FixedCsvHeader =
 		nameof(MatchDataDto.DeviceId) + ',' +
-		nameof(MatchDataDto.MatchId) + ',' +
+		nameof(MatchDataDto.RecordId) + ',' +
 		nameof(MatchDataDto.OriginalDeviceId) + ',' +
-		nameof(MatchDataDto.OriginalMatchId) + ',' +
+		nameof(MatchDataDto.OriginalRecordId) + ',' +
 		nameof(MatchDataDto.Parents) + ',' +
 		nameof(MatchDataDto.GameDeviceId) + ',' +
-		nameof(MatchDataDto.GameId) + ',' +
+		nameof(MatchDataDto.GameRecordId) + ',' +
 		nameof(MatchData.ScoutName) + ',' +
 		nameof(MatchData.EventCode) + ',' +
 		nameof(MatchData.Match.MatchNumber) + ',' +
@@ -51,20 +51,20 @@ public static class MatchDataDtoToCsv {
 		StringBuilder stringBuilder = new(50 + importMatchData.MatchData.GameSpecification.DataFields.Count * 5);
 		stringBuilder.Append(importMatchData.DeviceId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.MatchId);
+		stringBuilder.Append(importMatchData.RecordId);
 		stringBuilder.Append(',');
 		stringBuilder.Append(importMatchData.OriginalDeviceId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.OriginalMatchId);
+		stringBuilder.Append(importMatchData.OriginalRecordId);
 		stringBuilder.Append(',');
 
 		// List of parents in the format "(parent1DeviceId,parent1MatchId),(parent2DeviceId,parent2MatchId)"
-		stringBuilder.AppendJoin(";", importMatchData.Parents.Select(parent => $"{parent.deviceId}:{parent.matchId}"));
+		stringBuilder.AppendJoin(";", importMatchData.Parents.Select(parent => $"{parent.deviceId}:{parent.recordId}"));
 		stringBuilder.Append(',');
 
 		stringBuilder.Append(importMatchData.GameDeviceId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.GameId);
+		stringBuilder.Append(importMatchData.GameRecordId);
 		stringBuilder.Append(',');
 		stringBuilder.Append(importMatchData.MatchData.ScoutName.ToCsvFriendly());
 		stringBuilder.Append(',');
@@ -163,7 +163,7 @@ public static class MatchDataDtoToCsv {
 		}
 
 		string[] parentsTextSplit = parentsText.Split(';');
-		List<(string deviceId, uint matchId)> parents = [];
+		List<(string deviceId, uint recordId)> parents = [];
 		foreach (string parentText in parentsTextSplit) {
 
 			string[] parentComponents = parentText.Split(':');
@@ -258,12 +258,12 @@ public static class MatchDataDtoToCsv {
 		return MatchDataDto.Create(
 			matchData: matchDataObject,
 			deviceId: deviceId,
-			matchId: matchId,
+			recordId: matchId,
 			originalDeviceId: originalDeviceId,
-			originalMatchId: originalMatchId,
+			originalRecordId: originalMatchId,
 			parents: parents,
 			gameDeviceId: gameDeviceId,
-			gameId: gameId
+			gameRecordId: gameId
 		);
 	}
 

@@ -12,7 +12,11 @@ public record NewMatchDataDto {
 
 	public required string GameDeviceId { get; init; }
 
-	public required uint GameId { get; init; }
+	public required uint GameRecordId { get; init; }
+
+	public required string EventDeviceId { get; init; }
+
+	public required uint EventRecordId { get; init; }
 
 
 

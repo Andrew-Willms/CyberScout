@@ -31,12 +31,12 @@ public class MatchDataToCsvTests {
 		MatchDataDto matchDataDto = MatchDataDto.Create(
 			matchData: matchData,
 			deviceId: "deviceId",
-			matchId: 1,
+			recordId: 1,
 			originalDeviceId: "deviceId",
-			originalMatchId: 1,
+			originalRecordId: 1,
 			parents: [],
 			gameDeviceId: "deviceId",
-			gameId: 1
+			gameRecordId: 1
 		)!;
 
 		string serialized = MatchDataDtoToCsv.Serialize(matchDataDto);
@@ -53,12 +53,12 @@ public class MatchDataToCsvTests {
 		MatchDataDto matchDataDto = MatchDataDto.Create(
 			matchData: matchData,
 			deviceId: "deviceId",
-			matchId: 2,
+			recordId: 2,
 			originalDeviceId: "deviceId",
-			originalMatchId: 1,
+			originalRecordId: 1,
 			parents: [],
 			gameDeviceId: "deviceId",
-			gameId: 1
+			gameRecordId: 1
 		)!;
 
 		string serialized = MatchDataDtoToCsv.Serialize(matchDataDto);

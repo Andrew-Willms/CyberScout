@@ -11,17 +11,21 @@ public class MatchDataDto {
 
 	public required string DeviceId { get; init; }
 
-	public required uint MatchId { get; init; }
+	public required long RecordId { get; init; }
 
 	public required string OriginalDeviceId { get; init; }
 
-	public required uint OriginalMatchId { get; init; }
+	public required long OriginalRecordId { get; init; }
 
-	public required List<(string deviceId, uint matchId)> Parents { get; init; }
+	public required List<(string deviceId, long recordId)> Parents { get; init; }
 
 	public required string GameDeviceId { get; init; }
 
-	public required uint GameId { get; init; }
+	public required long GameRecordId { get; init; }
+
+	public required string EventDeviceId { get; init; }
+
+	public required long EventRecordId { get; init; }
 
 
 
@@ -31,37 +35,39 @@ public class MatchDataDto {
 	public static MatchDataDto? Create(
 		MatchData matchData,
 		string deviceId,
-		uint matchId,
+		long recordId,
 		string originalDeviceId,
-		uint originalMatchId,
-		List<(string deviceId, uint matchId)> parents,
+		long originalRecordId,
+		List<(string deviceId, long recordId)> parents,
 		string gameDeviceId,
-		uint gameId) {
+		long gameRecordId,
+		string eventDeviceId,
+		long eventRecordId) {
 
 		// The current match cannot be before the original match.
-		if (deviceId == originalDeviceId && matchId < originalMatchId) {
+		if (deviceId == originalDeviceId && recordId < originalRecordId) {
 			return null;
 		}
 
 		// If the current match is the original match there must be no parents.
-		if (deviceId == originalDeviceId && matchId == originalMatchId && parents.Count != 0) {
+		if (deviceId == originalDeviceId && recordId == originalRecordId && parents.Count != 0) {
 			return null;
 		}
 
 		// If the current match isn't the original match there must be at least one parent.
-		if ((deviceId != originalDeviceId || matchId != originalMatchId) && parents.Count == 0) {
+		if ((deviceId != originalDeviceId || recordId != originalRecordId) && parents.Count == 0) {
 			return null;
 		}
 
-		foreach ((string deviceId, uint matchId) parent in parents) {
+		foreach ((string deviceId, long recordId) parent in parents) {
 
 			// The current match cannot be before a parent match.
-			if (deviceId == parent.deviceId && matchId < parent.matchId) {
+			if (deviceId == parent.deviceId && recordId < parent.recordId) {
 				return null;
 			}
 
 			// A parent match cannot be before the original match.
-			if (parent.deviceId == originalDeviceId && parent.matchId < originalMatchId) {
+			if (parent.deviceId == originalDeviceId && parent.recordId < originalRecordId) {
 				return null;
 			}
 		}
@@ -69,12 +75,14 @@ public class MatchDataDto {
 		return new() {
 			MatchData = matchData,
 			DeviceId = deviceId,
-			MatchId = matchId,
+			RecordId = recordId,
 			OriginalDeviceId = originalDeviceId,
-			OriginalMatchId = originalMatchId,
+			OriginalRecordId = originalRecordId,
 			Parents = parents,
 			GameDeviceId = gameDeviceId,
-			GameId = gameId
+			GameRecordId = gameRecordId,
+			EventDeviceId = eventDeviceId,
+			EventRecordId = eventRecordId
 		};
 	}
 

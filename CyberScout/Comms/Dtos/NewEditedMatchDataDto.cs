@@ -13,13 +13,17 @@ public class NewEditedMatchDataDto {
 
 	public required string OriginalDeviceId { get; init; }
 
-	public required uint OriginalMatchId { get; init; }
+	public required long OriginalRecordId { get; init; }
 
-	public required List<(string deviceId, uint matchId)> Parents { get; init; }
+	public required List<(string deviceId, long recordId)> Parents { get; init; }
 
 	public required string GameDeviceId { get; init; }
 
-	public required uint GameId { get; init; }
+	public required long GameRecordId { get; init; }
+
+	public required string EventDeviceId { get; init; }
+
+	public required long EventRecordId { get; init; }
 
 
 
@@ -29,20 +33,22 @@ public class NewEditedMatchDataDto {
 		MatchData matchData,
 		string deviceId,
 		string originalDeviceId,
-		uint originalMatchId,
-		List<(string deviceId, uint matchId)> parents,
+		long originalRecordId,
+		List<(string deviceId, long recordId)> parents,
 		string gameDeviceId,
-		uint gameId) {
+		long gameRecordId,
+		string eventDeviceId,
+		long eventRecordId) {
 
 		// There must be at least one parent.
 		if (parents.Count == 0) {
 			return null;
 		}
 
-		foreach ((string deviceId, uint matchId) parent in parents) {
+		foreach ((string deviceId, long recordId) parent in parents) {
 
 			// A parent match cannot be before the original match.
-			if (parent.deviceId == originalDeviceId && parent.matchId < originalMatchId) {
+			if (parent.deviceId == originalDeviceId && parent.recordId < originalRecordId) {
 				return null;
 			}
 		}
@@ -51,10 +57,12 @@ public class NewEditedMatchDataDto {
 			MatchData = matchData,
 			DeviceId = deviceId,
 			OriginalDeviceId = originalDeviceId,
-			OriginalMatchId = originalMatchId,
+			OriginalRecordId = originalRecordId,
 			Parents = parents,
 			GameDeviceId = gameDeviceId,
-			GameId = gameId
+			GameRecordId = gameRecordId,
+			EventDeviceId = eventDeviceId,
+			EventRecordId = eventRecordId
 		};
 	}
 
