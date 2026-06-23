@@ -72,7 +72,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		public static class Games {
 			public const string DeviceId = "DeviceId";
-			public const string RecordId = "RecordId";
+			public const string GameId = "GameId";
 			public const string TimePublished = "TimePublished";
 			public const string Data = "Data";
 			public const string MajorVersion = "MajorVersion";
@@ -92,7 +92,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			public const string EndIndex = "EndIndex";
 			public const string Status = "Status";
 			public const string GameDeviceId = "GameDeviceId";
-			public const string GameRecordId = "GameRecordId";
+			public const string GameId = "GameRecordId";
 		}
 
 		// Every device with an internet connection will likely create an event from TBA and then will share this event to other devices.
@@ -100,7 +100,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		// amount of data as a match. I don't think it will meaningfully slow things down, and it's very convenient to treat everything the same.
 		public static class EventMetaData {
 			public const string DeviceId = "DeviceId";
-			public const string RecordId = "RecordId";
+			public const string EventMetaDataId = "EventMetaDataId";
 			public const string EventDataId = "EventDataId";
 			public const string TimePublished = "TimePublished";
 			public const string Source = "Source";
@@ -123,18 +123,18 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			public const string EndIndex = "EndIndex";
 			public const string Status = "Status";
 			public const string GameDeviceId = "GameDeviceId";
-			public const string GameRecordId = "GameRecordId";
+			public const string GameId = "GameId";
 			public const string EventDataId = "EventDataId";
 		}
 
 		public static class MatchData {
 			public const string DeviceId = "DeviceId";
-			public const string RecordId = "RecordId";
+			public const string MatchId = "MatchId";
 
 			// OriginalDeviceId and OriginalRecordId are not foreign keys because I do not want to require
 			// a device to have the original match data in order to have descendant match data.
 			public const string OriginalDeviceId = "OriginalDeviceId";
-			public const string OriginalRecordId = "OriginalRecordId";
+			public const string OriginalMatchId = "OriginalMatchId";
 
 			public const string GameDeviceId = "GameDeviceId";
 			public const string GameRecordId = "GameRecordId";
@@ -460,14 +460,14 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.Games)}" (
 			     "{Tables.Games.DeviceId}" TEXT NOT NULL,
-			     "{Tables.Games.RecordId}" INTEGER NOT NULL,
+			     "{Tables.Games.GameId}" INTEGER NOT NULL,
 			     "{Tables.Games.TimePublished}" INTEGER NOT NULL,
 			     "{Tables.Games.MajorVersion}" INTEGER NOT NULL,
 			     "{Tables.Games.MinorVersion}" INTEGER NOT NULL,
 			     "{Tables.Games.PatchVersion}" INTEGER NOT NULL,
 			     "{Tables.Games.Data}" TEXT NOT NULL,
 			     
-			     PRIMARY KEY ("{Tables.Games.DeviceId}", "{Tables.Games.RecordId}"),
+			     PRIMARY KEY ("{Tables.Games.DeviceId}", "{Tables.Games.GameId}"),
 			     
 			     FOREIGN KEY "{Tables.Games.DeviceId}"
 			         REFERENCES "{nameof(Tables.KnownDevices)}" "{Tables.KnownDevices.DeviceId}"
@@ -536,7 +536,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     "{Tables.EventIndex.EndIndex}" INTEGER NOT NULL,
 			     "{Tables.EventIndex.Status}" TEXT CHECK("{Tables.EventIndex.Status}" IN ('{nameof(RecordStatus.Stored)}', '{nameof(RecordStatus.Stored)}')),
 			     "{Tables.EventIndex.GameDeviceId}" TEXT NOT NULL,
-			     "{Tables.EventIndex.GameRecordId}" INTEGER NOT NULL,
+			     "{Tables.EventIndex.GameId}" INTEGER NOT NULL,
 			     
 			     CHECK ("{Tables.EventIndex.StartIndex}" <= "{Tables.EventIndex.EndIndex}"),
 			     
@@ -547,8 +547,8 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT,
 			     
-			     FOREIGN KEY ("{Tables.EventIndex.GameDeviceId}", "{Tables.EventIndex.GameRecordId}")
-			         REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.RecordId}")
+			     FOREIGN KEY ("{Tables.EventIndex.GameDeviceId}", "{Tables.EventIndex.GameId}")
+			         REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.GameId}")
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT,
 			 );
@@ -590,12 +590,12 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EventMetaData)}" (
 			     "{Tables.EventMetaData.DeviceId}" TEXT NOT NULL,
-			     "{Tables.EventMetaData.RecordId}" INTEGER NOT NULL,
+			     "{Tables.EventMetaData.EventMetaDataId}" INTEGER NOT NULL,
 			     "{Tables.EventMetaData.EventDataId}" INTEGER NOT NULL,
 			     "{Tables.EventMetaData.TimePublished}" INTEGER NOT NULL,
 			     "{Tables.EventMetaData.Source}" TEXT NOT NULL CHECK ("{Tables.EventMetaData.Source}" IN ('{nameof(EventDataSources.TheBlueAlliance)}', '{EventDataSources.Manual}'))
 			     
-			     PRIMARY KEY ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.RecordId}"),
+			     PRIMARY KEY ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.EventMetaDataId}"),
 			     
 			     FOREIGN KEY "{Tables.EventMetaData.DeviceId}"
 			         REFERENCES "{nameof(Tables.KnownDevices)}" ("{Tables.KnownDevices.DeviceId}")
@@ -695,7 +695,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     "{Tables.MatchIndex.EndIndex}" INTEGER NOT NULL,
 			     "{Tables.MatchIndex.Status}" TEXT CHECK("{Tables.MatchIndex.Status}" IN ('{nameof(RecordStatus.Stored)}', '{nameof(RecordStatus.Stored)}')),
 			     "{Tables.MatchIndex.GameDeviceId}" TEXT NOT NULL,
-			     "{Tables.MatchIndex.GameRecordId}" INTEGER NOT NULL,
+			     "{Tables.MatchIndex.GameId}" INTEGER NOT NULL,
 			     "{Tables.MatchIndex.EventDataId}" INTEGER NOT NULL,
 			     
 			     CHECK ("{Tables.MatchIndex.StartIndex}" <= "{Tables.MatchIndex.EndIndex}"),
@@ -712,8 +712,8 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT,
 			 	
-			     FOREIGN KEY ("{Tables.MatchIndex.GameDeviceId}", "{Tables.MatchIndex.GameRecordId}")
-			         REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.RecordId}")
+			     FOREIGN KEY ("{Tables.MatchIndex.GameDeviceId}", "{Tables.MatchIndex.GameId}")
+			         REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.GameId}")
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT,
 			 );
@@ -755,16 +755,16 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.MatchData)}" (
 			     "{Tables.MatchData.DeviceId}" TEXT NOT NULL,
-			     "{Tables.MatchData.RecordId}" INTEGER NOT NULL,
+			     "{Tables.MatchData.MatchId}" INTEGER NOT NULL,
 			     "{Tables.MatchData.OriginalDeviceId}" TEXT NOT NULL,
-			     "{Tables.MatchData.OriginalRecordId}" INTEGER NOT NULL,
+			     "{Tables.MatchData.OriginalMatchId}" INTEGER NOT NULL,
 			     "{Tables.MatchData.GameDeviceId}" TEXT NOT NULL,
 			     "{Tables.MatchData.GameRecordId}" INTEGER NOT NULL,
 			     "{Tables.MatchData.EventDeviceId}" TEXT NOT NULL,
 			     "{Tables.MatchData.EventRecordId}" INTEGER NOT NULL,
 			     "{Tables.MatchData.Data}" TEXT NOT NULL,
 			     
-			     PRIMARY KEY ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.RecordId}"),
+			     PRIMARY KEY ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.MatchId}"),
 			     
 			     FOREIGN KEY "{Tables.MatchData.DeviceId}"
 			         REFERENCES "{nameof(Tables.KnownDevices)}" ("{Tables.KnownDevices.DeviceId}")
@@ -772,12 +772,12 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			             ON DELETE RESTRICT,
 			     
 			     FOREIGN KEY ("{Tables.MatchData.GameDeviceId}", "{Tables.MatchData.GameRecordId}")
-			         REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.RecordId}")
+			         REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.GameId}")
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT,
 			 		     
 			     FOREIGN KEY ("{Tables.MatchData.EventDeviceId}", "{Tables.MatchData.EventRecordId}")
-			         REFERENCES "{nameof(Tables.EventMetaData)}" ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.RecordId}")
+			         REFERENCES "{nameof(Tables.EventMetaData)}" ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.EventMetaDataId}")
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT
 			 );
@@ -815,7 +815,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     PRIMARY KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildRecordId}, {Tables.EditGraphVertices.ParentDeviceId}", "{Tables.EditGraphVertices.ParentRecordId}"),
 			     
 			     FOREIGN KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildRecordId}")
-			         REFERENCES "{nameof(Tables.MatchData)}" ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.RecordId}")
+			         REFERENCES "{nameof(Tables.MatchData)}" ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.MatchId}")
 			             ON UPDATE RESTRICT
 			             ON DELETE CASCADE
 			 );
@@ -836,8 +836,6 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		return null;
 	}
-
-
 
 	public static Task<bool> CheckIntegrity(SqliteConnection connection) {
 
@@ -1233,9 +1231,9 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			$"""
 			 INSERT INTO "{nameof(Tables.MatchData)}" (
 			     "{Tables.MatchData.DeviceId}",
-			     "{Tables.MatchData.RecordId}",
+			     "{Tables.MatchData.MatchId}",
 			     "{Tables.MatchData.OriginalDeviceId}",
-			     "{Tables.MatchData.OriginalRecordId}",
+			     "{Tables.MatchData.OriginalMatchId}",
 			     "{Tables.MatchData.GameDeviceId}",
 			     "{Tables.MatchData.GameRecordId}",
 			     "{Tables.MatchData.Data}"
@@ -1255,7 +1253,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		addMatchData.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = newMatchDataDto.DeviceId });
 		addMatchData.Parameters.Add(new("@NextMatchId", SqliteType.Integer) { Value = nextMatchId });
 		addMatchData.Parameters.Add(new("@GameDeviceId", SqliteType.Text) { Value = newMatchDataDto.GameDeviceId });
-		addMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = newMatchDataDto.GameRecordId });
+		addMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = newMatchDataDto.GameId });
 		addMatchData.Parameters.Add(new("@Data", SqliteType.Text) { Value = data });
 
 		if (await addMatchData.ExecuteNonQueryAndExpect(1) is DataStoreError addMatchDataError) {
@@ -1320,9 +1318,9 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			$"""
 			 INSERT INTO "{nameof(Tables.MatchData)}" (
 			     "{Tables.MatchData.DeviceId}",
-			     "{Tables.MatchData.RecordId}",
+			     "{Tables.MatchData.MatchId}",
 			     "{Tables.MatchData.OriginalDeviceId}",
-			     "{Tables.MatchData.OriginalRecordId}",
+			     "{Tables.MatchData.OriginalMatchId}",
 			     "{Tables.MatchData.GameDeviceId}",
 			     "{Tables.MatchData.GameRecordId}",
 			     "{Tables.MatchData.Data}"
@@ -1342,9 +1340,9 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		addMatchData.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = newEditedMatchDataDto.DeviceId });
 		addMatchData.Parameters.Add(new("@NextMatchId", SqliteType.Integer) { Value = nextMatchId });
 		addMatchData.Parameters.Add(new("@OriginalDeviceId", SqliteType.Text) { Value = newEditedMatchDataDto.OriginalDeviceId });
-		addMatchData.Parameters.Add(new("@OriginalMatchId", SqliteType.Integer) { Value = newEditedMatchDataDto.OriginalRecordId });
+		addMatchData.Parameters.Add(new("@OriginalMatchId", SqliteType.Integer) { Value = newEditedMatchDataDto.OriginalMatchId });
 		addMatchData.Parameters.Add(new("@GameDeviceId", SqliteType.Text) { Value = newEditedMatchDataDto.GameDeviceId });
-		addMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = newEditedMatchDataDto.GameRecordId });
+		addMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = newEditedMatchDataDto.GameId });
 		addMatchData.Parameters.Add(new("@Data", SqliteType.Text) { Value = data });
 
 		if (await addMatchData.ExecuteNonQueryAndExpect(1) is DataStoreError addMatchDataError) {
@@ -1393,9 +1391,9 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			$"""
 			 INSERT INTO "{nameof(Tables.MatchData)}" (
 			     "{Tables.MatchData.DeviceId}",
-			     "{Tables.MatchData.RecordId}",
+			     "{Tables.MatchData.MatchId}",
 			     "{Tables.MatchData.OriginalDeviceId}",
-			     "{Tables.MatchData.OriginalRecordId}",
+			     "{Tables.MatchData.OriginalMatchId}",
 			     "{Tables.MatchData.GameDeviceId}",
 			     "{Tables.MatchData.GameRecordId}",
 			     "{Tables.MatchData.Data}"
@@ -1415,9 +1413,9 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		addMatchData.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = importMatchDataDto.DeviceId });
 		addMatchData.Parameters.Add(new("@MatchId", SqliteType.Integer) { Value = importMatchDataDto.DeviceId });
 		addMatchData.Parameters.Add(new("@OriginalDeviceId", SqliteType.Text) { Value = importMatchDataDto.OriginalDeviceId });
-		addMatchData.Parameters.Add(new("@OriginalMatchId", SqliteType.Integer) { Value = importMatchDataDto.OriginalRecordId });
+		addMatchData.Parameters.Add(new("@OriginalMatchId", SqliteType.Integer) { Value = importMatchDataDto.OriginalMatchId });
 		addMatchData.Parameters.Add(new("@GameDeviceId", SqliteType.Text) { Value = importMatchDataDto.GameDeviceId });
-		addMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = importMatchDataDto.GameRecordId });
+		addMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = importMatchDataDto.GameId });
 		addMatchData.Parameters.Add(new("@Data", SqliteType.Text) { Value = data });
 
 		if (await addMatchData.ExecuteNonQueryAndExpect(1) is DataStoreError addMatchDataError) {
@@ -1425,7 +1423,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Update Record Index Table --------
-		if (await AddRecordToIndex(importMatchDataDto.DeviceId, importMatchDataDto.RecordId) is DataStoreError addRecordError) {
+		if (await AddRecordToIndex(importMatchDataDto.DeviceId, importMatchDataDto.MatchId) is DataStoreError addRecordError) {
 			return addRecordError;
 		}
 
@@ -1451,19 +1449,19 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			$"""
 			 DELETE FROM "{nameof(Tables.MatchData)}"
 			 WHERE "{Tables.MatchData.OriginalDeviceId}" = @OriginalDeviceId
-			   AND "{Tables.MatchData.OriginalRecordId}" = @OriginalMatchId;
+			   AND "{Tables.MatchData.OriginalMatchId}" = @OriginalMatchId;
 			 """,
 			Connection);
 
 		deleteMatchData.Parameters.Add(new("@OriginalDeviceId", SqliteType.Text) { Value = matchDataToDelete.OriginalDeviceId });
-		deleteMatchData.Parameters.Add(new("@OriginalMatchId", SqliteType.Integer) { Value = matchDataToDelete.OriginalRecordId });
+		deleteMatchData.Parameters.Add(new("@OriginalMatchId", SqliteType.Integer) { Value = matchDataToDelete.OriginalMatchId });
 
 		if (await deleteMatchData.ExecuteNonQueryAndExpect(1) is DataStoreError addMatchDataError) {
 			return addMatchDataError;
 		}
 
 		// -------- Update Record Index Table --------
-		if (await DeleteRecordFromIndex(matchDataToDelete.DeviceId, matchDataToDelete.RecordId) is DataStoreError addRecordError) {
+		if (await DeleteRecordFromIndex(matchDataToDelete.DeviceId, matchDataToDelete.MatchId) is DataStoreError addRecordError) {
 			return addRecordError;
 		}
 

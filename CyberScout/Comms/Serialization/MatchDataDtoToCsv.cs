@@ -18,12 +18,14 @@ public static class MatchDataDtoToCsv {
 
 	private static readonly string FixedCsvHeader =
 		nameof(MatchDataDto.DeviceId) + ',' +
-		nameof(MatchDataDto.RecordId) + ',' +
+		nameof(MatchDataDto.MatchId) + ',' +
 		nameof(MatchDataDto.OriginalDeviceId) + ',' +
-		nameof(MatchDataDto.OriginalRecordId) + ',' +
+		nameof(MatchDataDto.OriginalMatchId) + ',' +
 		nameof(MatchDataDto.Parents) + ',' +
 		nameof(MatchDataDto.GameDeviceId) + ',' +
-		nameof(MatchDataDto.GameRecordId) + ',' +
+		nameof(MatchDataDto.GameId) + ',' +
+		nameof(MatchDataDto.EventDeviceId) + ',' +
+		nameof(MatchDataDto.EventId) + ',' +
 		nameof(MatchData.ScoutName) + ',' +
 		nameof(MatchData.EventCode) + ',' +
 		nameof(MatchData.Match.MatchNumber) + ',' +
@@ -34,7 +36,7 @@ public static class MatchDataDtoToCsv {
 		nameof(MatchData.StartTime) + ',' +
 		nameof(MatchData.EndTime) + ',';
 
-	private const int FixedFieldCount = 15;
+	private const int FixedFieldCount = 17;
 
 	public static string GetCsvHeaders(GameSpec gameSpecification) {
 
@@ -51,20 +53,24 @@ public static class MatchDataDtoToCsv {
 		StringBuilder stringBuilder = new(50 + importMatchData.MatchData.GameSpecification.DataFields.Count * 5);
 		stringBuilder.Append(importMatchData.DeviceId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.RecordId);
+		stringBuilder.Append(importMatchData.MatchId);
 		stringBuilder.Append(',');
 		stringBuilder.Append(importMatchData.OriginalDeviceId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.OriginalRecordId);
+		stringBuilder.Append(importMatchData.OriginalMatchId);
 		stringBuilder.Append(',');
 
-		// List of parents in the format "(parent1DeviceId,parent1MatchId),(parent2DeviceId,parent2MatchId)"
-		stringBuilder.AppendJoin(";", importMatchData.Parents.Select(parent => $"{parent.deviceId}:{parent.recordId}"));
+		// List of parents in the format "parent1DeviceId:parent1MatchId;parent2DeviceId:parent2MatchId"
+		stringBuilder.AppendJoin(";", importMatchData.Parents.Select(parent => $"{parent.deviceId}:{parent.matchdId}"));
 		stringBuilder.Append(',');
 
 		stringBuilder.Append(importMatchData.GameDeviceId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.GameRecordId);
+		stringBuilder.Append(importMatchData.GameId);
+		stringBuilder.Append(',');
+		stringBuilder.Append(importMatchData.EventDeviceId);
+		stringBuilder.Append(',');
+		stringBuilder.Append(importMatchData.EventId);
 		stringBuilder.Append(',');
 		stringBuilder.Append(importMatchData.MatchData.ScoutName.ToCsvFriendly());
 		stringBuilder.Append(',');
@@ -142,28 +148,30 @@ public static class MatchDataDtoToCsv {
 		// Not all strings are valid DeviceIds or text for the relevant field so this additional validation may be useful.
 
 		string deviceId = columns[0];
-		bool success = uint.TryParse(columns[1], out uint matchId);
+		bool success = long.TryParse(columns[1], out long matchId);
 		string originalDeviceId = columns[2];
-		success &= uint.TryParse(columns[3], out uint originalMatchId);
+		success &= long.TryParse(columns[3], out long originalMatchId);
 		string parentsText = columns[4];
 		string gameDeviceId = columns[5];
-		success &= uint.TryParse(columns[6], out uint gameId);
-		string scoutName = columns[7];
-		string eventCode = columns[8];
-		success &= uint.TryParse(columns[9], out uint matchNumber);
-		success &= Enum.TryParse(columns[10], out MatchType type);
-		success &= uint.TryParse(columns[11], out uint replayNumber);
-		success &= uint.TryParse(columns[12], out uint allianceIndex);
-		success &= uint.TryParse(columns[113], out uint teamNumber);
-		success &= DateTime.TryParse(columns[14], out DateTime startTime);
-		success &= DateTime.TryParse(columns[15], out DateTime endTime);
+		success &= long.TryParse(columns[6], out long gameId);
+		string eventDeviceId = columns[7];
+		success &= long.TryParse(columns[8], out long eventId);
+		string scoutName = columns[9];
+		string eventCode = columns[10];
+		success &= uint.TryParse(columns[11], out uint matchNumber);
+		success &= Enum.TryParse(columns[12], out MatchType type);
+		success &= uint.TryParse(columns[13], out uint replayNumber);
+		success &= uint.TryParse(columns[14], out uint allianceIndex);
+		success &= uint.TryParse(columns[15], out uint teamNumber);
+		success &= DateTime.TryParse(columns[16], out DateTime startTime);
+		success &= DateTime.TryParse(columns[17], out DateTime endTime);
 
 		if (!success) {
 			return null;
 		}
 
 		string[] parentsTextSplit = parentsText.Split(';');
-		List<(string deviceId, uint recordId)> parents = [];
+		List<(string deviceId, long matchId)> parents = [];
 		foreach (string parentText in parentsTextSplit) {
 
 			string[] parentComponents = parentText.Split(':');
@@ -175,11 +183,11 @@ public static class MatchDataDtoToCsv {
 			// todo: Same DeviceId validation as above.
 			string parentDeviceId = parentComponents[0];
 
-			if (uint.TryParse(parentComponents[1], out uint parentMatchNumber)) {
+			if (long.TryParse(parentComponents[1], out long parentMatchId)) {
 				return null;
 			}
 
-			parents.Add((parentDeviceId, parentMatchNumber));
+			parents.Add((parentDeviceId, parentMatchId));
 		}
 
 
@@ -258,12 +266,14 @@ public static class MatchDataDtoToCsv {
 		return MatchDataDto.Create(
 			matchData: matchDataObject,
 			deviceId: deviceId,
-			recordId: matchId,
+			matchId: matchId,
 			originalDeviceId: originalDeviceId,
-			originalRecordId: originalMatchId,
+			originalMatchId: originalMatchId,
 			parents: parents,
 			gameDeviceId: gameDeviceId,
-			gameRecordId: gameId
+			gameId: gameId,
+			eventDeviceId: eventDeviceId,
+			eventId: eventId
 		);
 	}
 
