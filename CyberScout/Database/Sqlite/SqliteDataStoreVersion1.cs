@@ -41,6 +41,8 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 	private static class Tables {
 
+		// -------- General --------
+
 		public static class DatabaseVersion {
 			public const string Version = "Version";
 		}
@@ -55,20 +57,17 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			public const string PublicKey = "PublicKey";
 		}
 
-		// I am targeting low spec Android phones with slow storage.
-		// I think I should do this even if it adds overhead.
-		public static class RecordIndex {
+		// -------- Game --------
+
+		public static class GameIdSequence {
+			public const string LastUsedId = "LastUsedId";
+		}
+
+		public static class GameIndex {
 			public const string DeviceId = "DeviceId";
 			public const string StartIndex = "StartIndex";
 			public const string EndIndex = "EndIndex";
 			public const string Status = "Status";
-			public const string GameDeviceId = "GameDeviceId";
-			public const string GameRecordId = "GameRecordId";
-			public const string EventDataId = "EventDataId";
-		}
-
-		public static class GlobalIdSequence {
-			public const string LastUsedId = "LastUsedId";
 		}
 
 		public static class Games {
@@ -81,9 +80,19 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			public const string PatchVersion = "PatchVersion";
 		}
 
-		public static class EventData {
-			public const string EventDataId = "EventDataId";
-			public const string Data = "Data";
+		// -------- Event --------
+
+		public static class EventIdSequence {
+			public const string LastUsedId = "LastUsedId";
+		}
+
+		public static class EventIndex {
+			public const string DeviceId = "DeviceId";
+			public const string StartIndex = "StartIndex";
+			public const string EndIndex = "EndIndex";
+			public const string Status = "Status";
+			public const string GameDeviceId = "GameDeviceId";
+			public const string GameRecordId = "GameRecordId";
 		}
 
 		// Every device with an internet connection will likely create an event from TBA and then will share this event to other devices.
@@ -95,6 +104,27 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			public const string EventDataId = "EventDataId";
 			public const string TimePublished = "TimePublished";
 			public const string Source = "Source";
+		}
+
+		public static class EventData {
+			public const string EventDataId = "EventDataId";
+			public const string Data = "Data";
+		}
+
+		// -------- Match --------
+
+		public static class MatchIdSequence {
+			public const string LastUsedId = "LastUsedId";
+		}
+
+		public static class MatchIndex {
+			public const string DeviceId = "DeviceId";
+			public const string StartIndex = "StartIndex";
+			public const string EndIndex = "EndIndex";
+			public const string Status = "Status";
+			public const string GameDeviceId = "GameDeviceId";
+			public const string GameRecordId = "GameRecordId";
+			public const string EventDataId = "EventDataId";
 		}
 
 		public static class MatchData {
@@ -157,7 +187,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			return null;
 		}
 
-		if (isEmpty is true && !await Create(connection)) {
+		if (isEmpty is true && await Create(connection) is not null) {
 			return null;
 		}
 
@@ -183,24 +213,84 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return new(connection);
 	}
 
-	private static async Task<bool> Create(SqliteConnection connection) {
+	private static async Task<DataStoreError?> Create(SqliteConnection connection) {
 
-		// -------- DatabaseVersion Table --------
-		SqliteCommand createDatabaseVersionTable = new(
+		if (await CreateDatabaseVersionTable(connection) is DataStoreError databaseVersionError) {
+			return databaseVersionError;
+		}
+
+		if (await CreateScoutTable(connection) is DataStoreError scoutError) {
+			return scoutError;
+		}
+
+		if (await CreateKnownDevicesTable(connection) is DataStoreError knownDevicesError) {
+			return knownDevicesError;
+		}
+
+		if (await CreateGameIdSequenceTable(connection) is DataStoreError gameIdSequenceError) {
+			return gameIdSequenceError;
+		}
+
+		if (await CreateGameIndexTable(connection) is DataStoreError gameIndexError) {
+			return gameIndexError;
+		}
+
+		if (await CreateGamesTable(connection) is DataStoreError gamesError) {
+			return gamesError;
+		}
+
+		if (await CreateEventIdSequenceTable(connection) is DataStoreError eventIdSequenceError) {
+			return eventIdSequenceError;
+		}
+
+		if (await CreateEventIndexTable(connection) is DataStoreError eventIndexError) {
+			return eventIndexError;
+		}
+
+		if (await CreateEventMetaDataTable(connection) is DataStoreError eventMetaDataError) {
+			return eventMetaDataError;
+		}
+
+		if (await CreateEventDataTable(connection) is DataStoreError eventDataError) {
+			return eventDataError;
+		}
+
+		if (await CreateMatchIdSequenceTable(connection) is DataStoreError matchIdSequenceError) {
+			return matchIdSequenceError;
+		}
+
+		if (await CreateMatchIndexTable(connection) is DataStoreError matchIndexError) {
+			return matchIndexError;
+		}
+
+		if (await CreateMatchDataTable(connection) is DataStoreError matchDataError) {
+			return matchDataError;
+		}
+
+		if (await CreateEditGraphVerticesTable(connection) is DataStoreError editGraphVerticesError) {
+			return editGraphVerticesError;
+		}
+
+		return null;
+	}
+
+	private static async Task<DataStoreError?> CreateDatabaseVersionTable(SqliteConnection connection) {
+
+		SqliteCommand command = new(
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.DatabaseVersion)}" (
-			 	"{Tables.DatabaseVersion.Version}" INTEGER NOT NULL
+			     "{Tables.DatabaseVersion.Version}" INTEGER NOT NULL
 			 );
-			 
+
 			 INSERT INTO "{nameof(Tables.DatabaseVersion)}" ("{Tables.DatabaseVersion.Version}")
 			 VALUES ({TargetDatabaseVersion});
-			 
+
 			 CREATE TRIGGER IF NOT EXISTS "block_inserts_on_{nameof(Tables.DatabaseVersion)}"
 			 BEFORE INSERT ON "{nameof(Tables.DatabaseVersion)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Inserts are not allowed on this table; only updates.');
 			 END;
-			 
+
 			 CREATE TRIGGER IF NOT EXISTS "block_deletes_on_{nameof(Tables.DatabaseVersion)}"
 			 BEFORE DELETE ON "{nameof(Tables.DatabaseVersion)}"
 			 BEGIN
@@ -210,27 +300,31 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			connection);
 
 		try {
-			await createDatabaseVersionTable.ExecuteNonQueryAsync();
-		} catch {
-			return false;
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
 		}
 
-		// -------- Scout Table --------
-		SqliteCommand createScoutTable = new(
+		return null;
+	}
+
+	private static async Task<DataStoreError?> CreateScoutTable(SqliteConnection connection) {
+
+		SqliteCommand command = new(
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.Scout)}" (
-			 	"{Tables.Scout.Name}" TEXT NOT NULL
+			     "{Tables.Scout.Name}" TEXT NOT NULL
 			 );
-			 
+
 			 INSERT INTO "{nameof(Tables.Scout)}" ("{Tables.Scout.Name}")
 			 VALUES ('');
-			 
+
 			 CREATE TRIGGER IF NOT EXISTS "block_inserts_on_{nameof(Tables.Scout)}"
 			 BEFORE INSERT ON "{nameof(Tables.Scout)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Inserts are not allowed on this table; only updates.');
 			 END;
-			 
+
 			 CREATE TRIGGER IF NOT EXISTS "block_deletes_on_{nameof(Tables.Scout)}"
 			 BEFORE DELETE ON "{nameof(Tables.Scout)}"
 			 BEGIN
@@ -240,18 +334,22 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			connection);
 
 		try {
-			await createScoutTable.ExecuteNonQueryAsync();
-		} catch {
-			return false;
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
 		}
 
-		// -------- KnownDevices Table --------
-		SqliteCommand createKnownDeviceTable = new(
+		return null;
+	}
+
+	private static async Task<DataStoreError?> CreateKnownDevicesTable(SqliteConnection connection) {
+
+		SqliteCommand command = new(
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.KnownDevices)}" (
-			 	"{Tables.KnownDevices.DeviceId}" TEXT NOT NULL PRIMARY KEY,
-			 	"{Tables.KnownDevices.DeviceName}" INTEGER NOT NULL,
-			 	"{Tables.KnownDevices.PublicKey}" TEXT NOT NULL
+			     "{Tables.KnownDevices.DeviceId}" TEXT NOT NULL PRIMARY KEY,
+			     "{Tables.KnownDevices.DeviceName}" INTEGER NOT NULL,
+			     "{Tables.KnownDevices.PublicKey}" TEXT NOT NULL
 			 );
 
 			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.KnownDevices)}"
@@ -263,89 +361,33 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			connection);
 
 		try {
-			await createKnownDeviceTable.ExecuteNonQueryAsync();
-		} catch {
-			return false;
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
 		}
 
-		// -------- RecordIndex Table --------
-		SqliteCommand createRecordIndexTable = new(
-			$"""
-			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.RecordIndex)}" (
-			 	"{Tables.RecordIndex.DeviceId}" TEXT NOT NULL,
-			 	"{Tables.RecordIndex.StartIndex}" INTEGER NOT NULL,
-			 	"{Tables.RecordIndex.EndIndex}" INTEGER NOT NULL,
-			 	"{Tables.RecordIndex.Status}" TEXT CHECK("{Tables.RecordIndex.Status}" IN ('{nameof(RecordStatus.Stored)}', '{nameof(RecordStatus.Stored)}')),
-			 	"{Tables.RecordIndex.GameDeviceId}" TEXT NOT NULL,
-			 	"{Tables.RecordIndex.GameRecordId}" INTEGER NOT NULL,
-			 	"{Tables.RecordIndex.EventDataId}" INTEGER NOT NULL,
-			 	
-			 	CHECK ("{Tables.RecordIndex.StartIndex}" <= "{Tables.RecordIndex.EndIndex}"),
-			 	
-			 	PRIMARY KEY ("{Tables.RecordIndex.DeviceId}", "{Tables.RecordIndex.StartIndex}", "{Tables.RecordIndex.EndIndex}"),
-			 	
-			 	FOREIGN KEY "{Tables.RecordIndex.DeviceId}"
-			  	    REFERENCES "{nameof(Tables.KnownDevices)}" "{Tables.KnownDevices.DeviceId}"
-			 		    ON UPDATE RESTRICT
-			 		    ON DELETE RESTRICT,
-			 	
-			 	FOREIGN KEY "{Tables.RecordIndex.EventDataId}"
-			 		REFERENCES "{nameof(Tables.EventData)}" "{Tables.EventData.EventDataId}"
-			 			ON UPDATE RESTRICT
-			 			ON DELETE RESTRICT,
-			 	
-			 	FOREIGN KEY ("{Tables.RecordIndex.GameDeviceId}", "{Tables.RecordIndex.GameRecordId}")
-			 	    REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.RecordId}")
-			 		    ON UPDATE RESTRICT
-			 		    ON DELETE RESTRICT,
-			 );
-			 
-			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.RecordIndex)}"
-			 BEFORE UPDATE ON "{nameof(Tables.RecordIndex)}"
-			 BEGIN
-			     SELECT RAISE(ABORT, 'Updates are not allowed on this table; only inserts and deletes.');
-			 END;
-			 
-			 CREATE TRIGGER IF NOT EXISTS "prevent_overlapping_ranges_in_{nameof(Tables.RecordIndex)}"
-			 BEFORE INSERT ON "{nameof(Tables.RecordIndex)}"
-			 FOR EACH ROW
-			 WHEN EXISTS (
-			     SELECT 1
-			     FROM "{nameof(Tables.RecordIndex)}" current
-			     WHERE NEW."{Tables.RecordIndex.DeviceId}" = current."{Tables.RecordIndex.DeviceId}"
-			       AND NEW."{Tables.RecordIndex.StartIndex}" <= current."{Tables.RecordIndex.EndIndex}"
-			       AND NEW."{Tables.RecordIndex.EndIndex}"   >= current."{Tables.RecordIndex.StartIndex}"
-			 )
-			 BEGIN
-			     SELECT RAISE(ABORT, '{nameof(Tables.RecordIndex)} ranges may not overlap.');
-			 END;
-			 """,
-			connection);
+		return null;
+	}
 
-		try {
-			await createRecordIndexTable.ExecuteNonQueryAsync();
-		} catch {
-			return false;
-		}
+	private static async Task<DataStoreError?> CreateGameIdSequenceTable(SqliteConnection connection) {
 
-		// -------- GameIdSequence Table --------
-		SqliteCommand createGlobalIdSequenceTable = new(
+		SqliteCommand command = new(
 			$"""
-			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.GlobalIdSequence)}" (
-			 	"{Tables.GlobalIdSequence.LastUsedId}" INTEGER NOT NULL
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.GameIdSequence)}" (
+			     "{Tables.GameIdSequence.LastUsedId}" INTEGER NOT NULL
 			 );
 
-			 INSERT INTO "{nameof(Tables.GlobalIdSequence)}" ("{Tables.GlobalIdSequence.LastUsedId}")
+			 INSERT INTO "{nameof(Tables.GameIdSequence)}" ("{Tables.GameIdSequence.LastUsedId}")
 			 VALUES (-1);
 
-			 CREATE TRIGGER IF NOT EXISTS "block_inserts_on_{nameof(Tables.GlobalIdSequence)}"
-			 BEFORE INSERT ON "{nameof(Tables.GlobalIdSequence)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_inserts_on_{nameof(Tables.GameIdSequence)}"
+			 BEFORE INSERT ON "{nameof(Tables.GameIdSequence)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Inserts are not allowed on this table; only updates.');
 			 END;
 
-			 CREATE TRIGGER IF NOT EXISTS "block_deletes_on_{nameof(Tables.GlobalIdSequence)}"
-			 BEFORE DELETE ON "{nameof(Tables.GlobalIdSequence)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_deletes_on_{nameof(Tables.GameIdSequence)}"
+			 BEFORE DELETE ON "{nameof(Tables.GameIdSequence)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Deletes are not allowed on this table; only updates.');
 			 END;
@@ -353,13 +395,68 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			connection);
 
 		try {
-			await createGlobalIdSequenceTable.ExecuteNonQueryAsync();
-		} catch {
-			return false;
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
 		}
 
-		// -------- Games Table --------
-		SqliteCommand createGamesTable = new(
+		return null;
+	}
+
+	private static async Task<DataStoreError?> CreateGameIndexTable(SqliteConnection connection) {
+
+		SqliteCommand command = new(
+			$"""
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.GameIndex)}" (
+			     "{Tables.GameIndex.DeviceId}" TEXT NOT NULL,
+			     "{Tables.GameIndex.StartIndex}" INTEGER NOT NULL,
+			     "{Tables.GameIndex.EndIndex}" INTEGER NOT NULL,
+			     "{Tables.GameIndex.Status}" TEXT CHECK("{Tables.GameIndex.Status}" IN ('{nameof(RecordStatus.Stored)}', '{nameof(RecordStatus.Stored)}')),
+			     
+			     CHECK ("{Tables.GameIndex.StartIndex}" <= "{Tables.GameIndex.EndIndex}"),
+			     
+			     PRIMARY KEY ("{Tables.GameIndex.DeviceId}", "{Tables.GameIndex.StartIndex}", "{Tables.GameIndex.EndIndex}"),
+			     
+			     FOREIGN KEY "{Tables.GameIndex.DeviceId}"
+			         REFERENCES "{nameof(Tables.KnownDevices)}" "{Tables.KnownDevices.DeviceId}"
+			             ON UPDATE RESTRICT
+			             ON DELETE RESTRICT
+			 );
+			 
+			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.GameIndex)}"
+			 BEFORE UPDATE ON "{nameof(Tables.GameIndex)}"
+			 BEGIN
+			     SELECT RAISE(ABORT, 'Updates are not allowed on this table; only inserts and deletes.');
+			 END;
+			 
+			 CREATE TRIGGER IF NOT EXISTS "prevent_overlapping_ranges_in_{nameof(Tables.GameIndex)}"
+			 BEFORE INSERT ON "{nameof(Tables.GameIndex)}"
+			 FOR EACH ROW
+			 WHEN EXISTS (
+			     SELECT 1
+			     FROM "{nameof(Tables.GameIndex)}" current
+			     WHERE NEW."{Tables.GameIndex.DeviceId}" = current."{Tables.GameIndex.DeviceId}"
+			       AND NEW."{Tables.GameIndex.StartIndex}" <= current."{Tables.GameIndex.EndIndex}"
+			       AND NEW."{Tables.GameIndex.EndIndex}"   >= current."{Tables.GameIndex.StartIndex}"
+			 )
+			 BEGIN
+			     SELECT RAISE(ABORT, '{nameof(Tables.GameIndex)} ranges may not overlap.');
+			 END;
+			 """,
+			connection);
+
+		try {
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
+		}
+
+		return null;
+	}
+
+	private static async Task<DataStoreError?> CreateGamesTable(SqliteConnection connection) {
+
+		SqliteCommand command = new(
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.Games)}" (
 			     "{Tables.Games.DeviceId}" TEXT NOT NULL,
@@ -373,11 +470,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     PRIMARY KEY ("{Tables.Games.DeviceId}", "{Tables.Games.RecordId}"),
 			     
 			     FOREIGN KEY "{Tables.Games.DeviceId}"
-			  	    REFERENCES "{nameof(Tables.KnownDevices)}" "{Tables.KnownDevices.DeviceId}"
-			 		    ON UPDATE RESTRICT
-			 		    ON DELETE RESTRICT,
+			         REFERENCES "{nameof(Tables.KnownDevices)}" "{Tables.KnownDevices.DeviceId}"
+			             ON UPDATE RESTRICT
+			             ON DELETE RESTRICT,
 			 );
-			 
+
 			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.Games)}"
 			 BEFORE UPDATE ON "{nameof(Tables.Games)}"
 			 BEGIN
@@ -387,56 +484,130 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			connection);
 
 		try {
-			await createGamesTable.ExecuteNonQueryAsync();
-		} catch {
-			return false;
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
 		}
 
-		// -------- EventData Table --------
-		SqliteCommand createEventDataTable = new(
+		return null;
+	}
+
+	private static async Task<DataStoreError?> CreateEventIdSequenceTable(SqliteConnection connection) {
+
+		SqliteCommand command = new(
 			$"""
-			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EventData)}" (
-			 	"{Tables.EventData.EventDataId}" INTEGER PRIMARY KEY,
-			 	"{Tables.EventData.Data}" TEXT NOT NULL
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EventIdSequence)}" (
+			     "{Tables.EventIdSequence.LastUsedId}" INTEGER NOT NULL
 			 );
-			 
-			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.EventData)}"
-			 BEFORE UPDATE ON "{nameof(Tables.EventData)}"
+
+			 INSERT INTO "{nameof(Tables.EventIdSequence)}" ("{Tables.EventIdSequence.LastUsedId}")
+			 VALUES (-1);
+
+			 CREATE TRIGGER IF NOT EXISTS "block_inserts_on_{nameof(Tables.EventIdSequence)}"
+			 BEFORE INSERT ON "{nameof(Tables.EventIdSequence)}"
 			 BEGIN
-			     SELECT RAISE(ABORT, 'Updates are not allowed on this table; only inserts and deletes.');
+			     SELECT RAISE(ABORT, 'Inserts are not allowed on this table; only updates.');
+			 END;
+
+			 CREATE TRIGGER IF NOT EXISTS "block_deletes_on_{nameof(Tables.EventIdSequence)}"
+			 BEFORE DELETE ON "{nameof(Tables.EventIdSequence)}"
+			 BEGIN
+			     SELECT RAISE(ABORT, 'Deletes are not allowed on this table; only updates.');
 			 END;
 			 """,
 			connection);
 
 		try {
-			await createEventDataTable.ExecuteNonQueryAsync();
-		} catch {
-			return false;
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
 		}
 
-		// -------- EventMetaData Table --------
-		SqliteCommand createEventMetaDataTable = new(
+		return null;
+	}
+
+	private static async Task<DataStoreError?> CreateEventIndexTable(SqliteConnection connection) {
+
+		SqliteCommand command = new(
 			$"""
-			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EventMetaData)}" (
-			 	"{Tables.EventMetaData.DeviceId}" TEXT NOT NULL,
-			 	"{Tables.EventMetaData.RecordId}" INTEGER NOT NULL,
-			 	"{Tables.EventMetaData.EventDataId}" INTEGER NOT NULL,
-			 	"{Tables.EventMetaData.TimePublished}" INTEGER NOT NULL,
-			 	"{Tables.EventMetaData.Source}" TEXT NOT NULL CHECK ("{Tables.EventMetaData.Source}" IN ('{nameof(EventDataSources.TheBlueAlliance)}', '{EventDataSources.Manual}'))
-			 	
-			 	PRIMARY KEY ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.RecordId}"),
-			 	
-			 	FOREIGN KEY "{Tables.EventMetaData.DeviceId}"
-			 	    REFERENCES "{nameof(Tables.KnownDevices)}" ("{Tables.KnownDevices.DeviceId}")
-			 		    ON UPDATE RESTRICT
-			 		    ON DELETE RESTRICT,
-			 	
-			 	FOREIGN KEY "{Tables.EventMetaData.EventDataId}"
-			 		REFERENCES "{nameof(Tables.EventData)}" ("{Tables.EventData.EventDataId}")
-			 			ON UPDATE RESTRICT
-			 			ON DELETE RESTRICT,
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EventIndex)}" (
+			     "{Tables.EventIndex.DeviceId}" TEXT NOT NULL,
+			     "{Tables.EventIndex.StartIndex}" INTEGER NOT NULL,
+			     "{Tables.EventIndex.EndIndex}" INTEGER NOT NULL,
+			     "{Tables.EventIndex.Status}" TEXT CHECK("{Tables.EventIndex.Status}" IN ('{nameof(RecordStatus.Stored)}', '{nameof(RecordStatus.Stored)}')),
+			     "{Tables.EventIndex.GameDeviceId}" TEXT NOT NULL,
+			     "{Tables.EventIndex.GameRecordId}" INTEGER NOT NULL,
+			     
+			     CHECK ("{Tables.EventIndex.StartIndex}" <= "{Tables.EventIndex.EndIndex}"),
+			     
+			     PRIMARY KEY ("{Tables.EventIndex.DeviceId}", "{Tables.EventIndex.StartIndex}", "{Tables.EventIndex.EndIndex}"),
+			     
+			     FOREIGN KEY "{Tables.EventIndex.DeviceId}"
+			         REFERENCES "{nameof(Tables.KnownDevices)}" "{Tables.KnownDevices.DeviceId}"
+			             ON UPDATE RESTRICT
+			             ON DELETE RESTRICT,
+			     
+			     FOREIGN KEY ("{Tables.EventIndex.GameDeviceId}", "{Tables.EventIndex.GameRecordId}")
+			         REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.RecordId}")
+			             ON UPDATE RESTRICT
+			             ON DELETE RESTRICT,
 			 );
 			 
+			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.EventIndex)}"
+			 BEFORE UPDATE ON "{nameof(Tables.EventIndex)}"
+			 BEGIN
+			     SELECT RAISE(ABORT, 'Updates are not allowed on this table; only inserts and deletes.');
+			 END;
+			 
+			 CREATE TRIGGER IF NOT EXISTS "prevent_overlapping_ranges_in_{nameof(Tables.EventIndex)}"
+			 BEFORE INSERT ON "{nameof(Tables.EventIndex)}"
+			 FOR EACH ROW
+			 WHEN EXISTS (
+			     SELECT 1
+			     FROM "{nameof(Tables.EventIndex)}" current
+			     WHERE NEW."{Tables.EventIndex.DeviceId}" = current."{Tables.EventIndex.DeviceId}"
+			       AND NEW."{Tables.EventIndex.StartIndex}" <= current."{Tables.EventIndex.EndIndex}"
+			       AND NEW."{Tables.EventIndex.EndIndex}"   >= current."{Tables.EventIndex.StartIndex}"
+			 )
+			 BEGIN
+			     SELECT RAISE(ABORT, '{nameof(Tables.EventIndex)} ranges may not overlap.');
+			 END;
+			 """,
+			connection);
+
+		try {
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
+		}
+
+		return null;
+	}
+
+	private static async Task<DataStoreError?> CreateEventMetaDataTable(SqliteConnection connection) {
+
+		SqliteCommand command = new(
+			$"""
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EventMetaData)}" (
+			     "{Tables.EventMetaData.DeviceId}" TEXT NOT NULL,
+			     "{Tables.EventMetaData.RecordId}" INTEGER NOT NULL,
+			     "{Tables.EventMetaData.EventDataId}" INTEGER NOT NULL,
+			     "{Tables.EventMetaData.TimePublished}" INTEGER NOT NULL,
+			     "{Tables.EventMetaData.Source}" TEXT NOT NULL CHECK ("{Tables.EventMetaData.Source}" IN ('{nameof(EventDataSources.TheBlueAlliance)}', '{EventDataSources.Manual}'))
+			     
+			     PRIMARY KEY ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.RecordId}"),
+			     
+			     FOREIGN KEY "{Tables.EventMetaData.DeviceId}"
+			         REFERENCES "{nameof(Tables.KnownDevices)}" ("{Tables.KnownDevices.DeviceId}")
+			             ON UPDATE RESTRICT
+			             ON DELETE RESTRICT,
+			 	
+			     FOREIGN KEY "{Tables.EventMetaData.EventDataId}"
+			         REFERENCES "{nameof(Tables.EventData)}" ("{Tables.EventData.EventDataId}")
+			             ON UPDATE RESTRICT
+			             ON DELETE RESTRICT,
+			 );
+
 			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.EventMetaData)}"
 			 BEFORE UPDATE ON "{nameof(Tables.EventMetaData)}"
 			 BEGIN
@@ -446,41 +617,169 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			connection);
 
 		try {
-			await createEventMetaDataTable.ExecuteNonQueryAsync();
-		} catch {
-			return false;
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
 		}
 
-		// -------- MatchData Table --------
-		SqliteCommand createMatchDataTable = new(
+		return null;
+	}
+
+	private static async Task<DataStoreError?> CreateEventDataTable(SqliteConnection connection) {
+
+		SqliteCommand command = new(
+			$"""
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EventData)}" (
+			     "{Tables.EventData.EventDataId}" INTEGER PRIMARY KEY,
+			     "{Tables.EventData.Data}" TEXT NOT NULL
+			 );
+
+			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.EventData)}"
+			 BEFORE UPDATE ON "{nameof(Tables.EventData)}"
+			 BEGIN
+			     SELECT RAISE(ABORT, 'Updates are not allowed on this table; only inserts and deletes.');
+			 END;
+			 """,
+			connection);
+
+		try {
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
+		}
+
+		return null;
+	}
+
+	private static async Task<DataStoreError?> CreateMatchIdSequenceTable(SqliteConnection connection) {
+
+		SqliteCommand command = new(
+			$"""
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.MatchIdSequence)}" (
+			     "{Tables.MatchIdSequence.LastUsedId}" INTEGER NOT NULL
+			 );
+
+			 INSERT INTO "{nameof(Tables.MatchIdSequence)}" ("{Tables.MatchIdSequence.LastUsedId}")
+			 VALUES (-1);
+
+			 CREATE TRIGGER IF NOT EXISTS "block_inserts_on_{nameof(Tables.MatchIdSequence)}"
+			 BEFORE INSERT ON "{nameof(Tables.MatchIdSequence)}"
+			 BEGIN
+			     SELECT RAISE(ABORT, 'Inserts are not allowed on this table; only updates.');
+			 END;
+
+			 CREATE TRIGGER IF NOT EXISTS "block_deletes_on_{nameof(Tables.MatchIdSequence)}"
+			 BEFORE DELETE ON "{nameof(Tables.MatchIdSequence)}"
+			 BEGIN
+			     SELECT RAISE(ABORT, 'Deletes are not allowed on this table; only updates.');
+			 END;
+			 """,
+			connection);
+
+		try {
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
+		}
+
+		return null;
+	}
+
+	private static async Task<DataStoreError?> CreateMatchIndexTable(SqliteConnection connection) {
+
+		SqliteCommand command = new(
+			$"""
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.MatchIndex)}" (
+			     "{Tables.MatchIndex.DeviceId}" TEXT NOT NULL,
+			     "{Tables.MatchIndex.StartIndex}" INTEGER NOT NULL,
+			     "{Tables.MatchIndex.EndIndex}" INTEGER NOT NULL,
+			     "{Tables.MatchIndex.Status}" TEXT CHECK("{Tables.MatchIndex.Status}" IN ('{nameof(RecordStatus.Stored)}', '{nameof(RecordStatus.Stored)}')),
+			     "{Tables.MatchIndex.GameDeviceId}" TEXT NOT NULL,
+			     "{Tables.MatchIndex.GameRecordId}" INTEGER NOT NULL,
+			     "{Tables.MatchIndex.EventDataId}" INTEGER NOT NULL,
+			     
+			     CHECK ("{Tables.MatchIndex.StartIndex}" <= "{Tables.MatchIndex.EndIndex}"),
+			     
+			     PRIMARY KEY ("{Tables.MatchIndex.DeviceId}", "{Tables.MatchIndex.StartIndex}", "{Tables.MatchIndex.EndIndex}"),
+			     
+			     FOREIGN KEY "{Tables.MatchIndex.DeviceId}"
+			         REFERENCES "{nameof(Tables.KnownDevices)}" "{Tables.KnownDevices.DeviceId}"
+			             ON UPDATE RESTRICT
+			             ON DELETE RESTRICT,
+			     
+			     FOREIGN KEY "{Tables.MatchIndex.EventDataId}"
+			         REFERENCES "{nameof(Tables.EventData)}" "{Tables.EventData.EventDataId}"
+			             ON UPDATE RESTRICT
+			             ON DELETE RESTRICT,
+			 	
+			     FOREIGN KEY ("{Tables.MatchIndex.GameDeviceId}", "{Tables.MatchIndex.GameRecordId}")
+			         REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.RecordId}")
+			             ON UPDATE RESTRICT
+			             ON DELETE RESTRICT,
+			 );
+			 
+			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.MatchIndex)}"
+			 BEFORE UPDATE ON "{nameof(Tables.MatchIndex)}"
+			 BEGIN
+			     SELECT RAISE(ABORT, 'Updates are not allowed on this table; only inserts and deletes.');
+			 END;
+			 
+			 CREATE TRIGGER IF NOT EXISTS "prevent_overlapping_ranges_in_{nameof(Tables.MatchIndex)}"
+			 BEFORE INSERT ON "{nameof(Tables.MatchIndex)}"
+			 FOR EACH ROW
+			 WHEN EXISTS (
+			     SELECT 1
+			     FROM "{nameof(Tables.MatchIndex)}" current
+			     WHERE NEW."{Tables.MatchIndex.DeviceId}" = current."{Tables.MatchIndex.DeviceId}"
+			       AND NEW."{Tables.MatchIndex.StartIndex}" <= current."{Tables.MatchIndex.EndIndex}"
+			       AND NEW."{Tables.MatchIndex.EndIndex}"   >= current."{Tables.MatchIndex.StartIndex}"
+			 )
+			 BEGIN
+			     SELECT RAISE(ABORT, '{nameof(Tables.MatchIndex)} ranges may not overlap.');
+			 END;
+			 """,
+			connection);
+
+		try {
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
+		}
+
+		return null;
+	}
+
+	private static async Task<DataStoreError?> CreateMatchDataTable(SqliteConnection connection) {
+
+		SqliteCommand command = new(
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.MatchData)}" (
-			 	"{Tables.MatchData.DeviceId}" TEXT NOT NULL,
-			 	"{Tables.MatchData.RecordId}" INTEGER NOT NULL,
-			 	"{Tables.MatchData.OriginalDeviceId}" TEXT NOT NULL,
-			 	"{Tables.MatchData.OriginalRecordId}" INTEGER NOT NULL,
-			 	"{Tables.MatchData.GameDeviceId}" TEXT NOT NULL,
-			 	"{Tables.MatchData.GameRecordId}" INTEGER NOT NULL,
-			 	"{Tables.MatchData.EventDeviceId}" TEXT NOT NULL,
-			 	"{Tables.MatchData.EventRecordId}" INTEGER NOT NULL,
-			 	"{Tables.MatchData.Data}" TEXT NOT NULL,
-			 	
-			 	PRIMARY KEY ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.RecordId}"),
-			 	
-			 	FOREIGN KEY "{Tables.MatchData.DeviceId}"
-			 	    REFERENCES "{nameof(Tables.KnownDevices)}" ("{Tables.KnownDevices.DeviceId}")
-			 	        ON UPDATE RESTRICT
-			 	        ON DELETE RESTRICT,
-			 
+			     "{Tables.MatchData.DeviceId}" TEXT NOT NULL,
+			     "{Tables.MatchData.RecordId}" INTEGER NOT NULL,
+			     "{Tables.MatchData.OriginalDeviceId}" TEXT NOT NULL,
+			     "{Tables.MatchData.OriginalRecordId}" INTEGER NOT NULL,
+			     "{Tables.MatchData.GameDeviceId}" TEXT NOT NULL,
+			     "{Tables.MatchData.GameRecordId}" INTEGER NOT NULL,
+			     "{Tables.MatchData.EventDeviceId}" TEXT NOT NULL,
+			     "{Tables.MatchData.EventRecordId}" INTEGER NOT NULL,
+			     "{Tables.MatchData.Data}" TEXT NOT NULL,
+			     
+			     PRIMARY KEY ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.RecordId}"),
+			     
+			     FOREIGN KEY "{Tables.MatchData.DeviceId}"
+			         REFERENCES "{nameof(Tables.KnownDevices)}" ("{Tables.KnownDevices.DeviceId}")
+			             ON UPDATE RESTRICT
+			             ON DELETE RESTRICT,
+			     
 			     FOREIGN KEY ("{Tables.MatchData.GameDeviceId}", "{Tables.MatchData.GameRecordId}")
 			         REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.RecordId}")
-			 		     ON UPDATE RESTRICT
-			 		     ON DELETE RESTRICT,
+			             ON UPDATE RESTRICT
+			             ON DELETE RESTRICT,
 			 		     
 			     FOREIGN KEY ("{Tables.MatchData.EventDeviceId}", "{Tables.MatchData.EventRecordId}")
 			         REFERENCES "{nameof(Tables.EventMetaData)}" ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.RecordId}")
-			 		     ON UPDATE RESTRICT
-			 		     ON DELETE RESTRICT
+			             ON UPDATE RESTRICT
+			             ON DELETE RESTRICT
 			 );
 
 			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.MatchData)}"
@@ -492,31 +791,35 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			connection);
 
 		try {
-			await createMatchDataTable.ExecuteNonQueryAsync();
-		} catch {
-			return false;
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
 		}
 
-		// -------- EditGraphVertex Table --------
-		SqliteCommand createEditGraphVerticesTable = new(
+		return null;
+	}
+
+	private static async Task<DataStoreError?> CreateEditGraphVerticesTable(SqliteConnection connection) {
+
+		SqliteCommand command = new(
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EditGraphVertices)}" (
-			 	"{Tables.EditGraphVertices.ChildDeviceId}" TEXT NOT NULL,
-			 	"{Tables.EditGraphVertices.ChildRecordId}" INTEGER NOT NULL,
-			 	"{Tables.EditGraphVertices.ParentDeviceId}" TEXT NOT NULL,
-			 	"{Tables.EditGraphVertices.ParentRecordId}" INTEGER NOT NULL,
-			 	"{Tables.EditGraphVertices.OriginalDeviceId}" TEXT NOT NULL,
-			 	"{Tables.EditGraphVertices.OriginalRecordId}" INTEGER NOT NULL,
-			 	"{Tables.EditGraphVertices.Comment}" TEXT,
-			 	
-			 	PRIMARY KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildRecordId}, {Tables.EditGraphVertices.ParentDeviceId}", "{Tables.EditGraphVertices.ParentRecordId}"),
-			 	
-			 	FOREIGN KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildRecordId}")
-			 		REFERENCES "{nameof(Tables.MatchData)}" ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.RecordId}")
-			 			ON UPDATE RESTRICT
-			 			ON DELETE CASCADE
+			     "{Tables.EditGraphVertices.ChildDeviceId}" TEXT NOT NULL,
+			     "{Tables.EditGraphVertices.ChildRecordId}" INTEGER NOT NULL,
+			     "{Tables.EditGraphVertices.ParentDeviceId}" TEXT NOT NULL,
+			     "{Tables.EditGraphVertices.ParentRecordId}" INTEGER NOT NULL,
+			     "{Tables.EditGraphVertices.OriginalDeviceId}" TEXT NOT NULL,
+			     "{Tables.EditGraphVertices.OriginalRecordId}" INTEGER NOT NULL,
+			     "{Tables.EditGraphVertices.Comment}" TEXT,
+			     
+			     PRIMARY KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildRecordId}, {Tables.EditGraphVertices.ParentDeviceId}", "{Tables.EditGraphVertices.ParentRecordId}"),
+			     
+			     FOREIGN KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildRecordId}")
+			         REFERENCES "{nameof(Tables.MatchData)}" ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.RecordId}")
+			             ON UPDATE RESTRICT
+			             ON DELETE CASCADE
 			 );
-			 
+
 			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.EditGraphVertices)}"
 			 BEFORE UPDATE ON "{nameof(Tables.EditGraphVertices)}"
 			 BEGIN
@@ -526,13 +829,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			connection);
 
 		try {
-			await createEditGraphVerticesTable.ExecuteNonQueryAsync();
-		} catch {
-			return false;
+			await command.ExecuteNonQueryAndExpect(0);
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command);
 		}
 
-		return true;
+		return null;
 	}
+
+
 
 	public static Task<bool> CheckIntegrity(SqliteConnection connection) {
 
@@ -545,10 +850,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SqliteCommand getIndexRange = new(
 			$"""
-			 SELECT * FROM "{nameof(Tables.RecordIndex)}"
-			 WHERE "{Tables.RecordIndex.DeviceId}" = @DeviceId
-			   AND "{Tables.RecordIndex.StartIndex}" = @StartIndex
-			   AND "{Tables.RecordIndex.Status}" = '{nameof(RecordStatus.Stored)}'
+			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
+			 WHERE "{Tables.MatchIndex.DeviceId}" = @DeviceId
+			   AND "{Tables.MatchIndex.StartIndex}" = @StartIndex
+			   AND "{Tables.MatchIndex.Status}" = '{nameof(RecordStatus.Stored)}'
 			 """,
 			Connection);
 
@@ -565,10 +870,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SqliteCommand getIndexRange = new(
 			$"""
-			 SELECT * FROM "{nameof(Tables.RecordIndex)}"
-			 WHERE "{Tables.RecordIndex.DeviceId}" = @DeviceId
-			   AND "{Tables.RecordIndex.EndIndex}" = @EndIndex
-			   AND "{Tables.RecordIndex.Status}" = '{nameof(RecordStatus.Stored)}'
+			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
+			 WHERE "{Tables.MatchIndex.DeviceId}" = @DeviceId
+			   AND "{Tables.MatchIndex.EndIndex}" = @EndIndex
+			   AND "{Tables.MatchIndex.Status}" = '{nameof(RecordStatus.Stored)}'
 			 """,
 			Connection);
 
@@ -585,11 +890,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SqliteCommand getIndexRange = new(
 			$"""
-			 SELECT * FROM "{nameof(Tables.RecordIndex)}"
-			 WHERE "{Tables.RecordIndex.DeviceId}" = @DeviceId
-			   AND "{Tables.RecordIndex.StartIndex}" <= @Index
-			   AND "{Tables.RecordIndex.EndIndex}" >= @EndIndex
-			   AND "{Tables.RecordIndex.Status}" = '{nameof(RecordStatus.Stored)}'
+			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
+			 WHERE "{Tables.MatchIndex.DeviceId}" = @DeviceId
+			   AND "{Tables.MatchIndex.StartIndex}" <= @Index
+			   AND "{Tables.MatchIndex.EndIndex}" >= @EndIndex
+			   AND "{Tables.MatchIndex.Status}" = '{nameof(RecordStatus.Stored)}'
 			 """,
 			Connection);
 
@@ -606,11 +911,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SqliteCommand addRecordRange = new(
 			$"""
-			 INSERT INTO "{nameof(Tables.RecordIndex)}" (
-			     "{Tables.RecordIndex.DeviceId}",
-			     "{Tables.RecordIndex.StartIndex}",
-			     "{Tables.RecordIndex.EndIndex}",
-			     "{Tables.RecordIndex.Status}"
+			 INSERT INTO "{nameof(Tables.MatchIndex)}" (
+			     "{Tables.MatchIndex.DeviceId}",
+			     "{Tables.MatchIndex.StartIndex}",
+			     "{Tables.MatchIndex.EndIndex}",
+			     "{Tables.MatchIndex.Status}"
 			 )
 			 VALUES (
 			     @DeviceId,
@@ -637,11 +942,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SqliteCommand deleteRecordRange = new(
 			$"""
-			 DELETE FROM "{nameof(Tables.RecordIndex)}"
-			 WHERE "{Tables.RecordIndex.DeviceId}" = @DeviceId
-			   AND "{Tables.RecordIndex.StartIndex}" = @StartIndex
-			   AND "{Tables.RecordIndex.EndIndex}" = @EndIndex
-			   AND "{Tables.RecordIndex.Status}" = @Status;
+			 DELETE FROM "{nameof(Tables.MatchIndex)}"
+			 WHERE "{Tables.MatchIndex.DeviceId}" = @DeviceId
+			   AND "{Tables.MatchIndex.StartIndex}" = @StartIndex
+			   AND "{Tables.MatchIndex.EndIndex}" = @EndIndex
+			   AND "{Tables.MatchIndex.Status}" = @Status;
 			 """,
 			Connection);
 
@@ -907,7 +1212,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		// -------- Get MatchId --------
 		SqliteCommand getMatchId = new(
-			$"""SELECT "{Tables.GlobalIdSequence.LastUsedId}" FROM "{nameof(Tables.GlobalIdSequence)}" WHERE ROWID = 1;""",
+			$"""SELECT "{Tables.MatchIdSequence.LastUsedId}" FROM "{nameof(Tables.MatchIdSequence)}" WHERE ROWID = 1;""",
 			Connection);
 
 		AsyncTryValueResult<long, DataStoreError> result = await getMatchId.TryExecuteScalar<long>();
@@ -960,8 +1265,8 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		// -------- Update Sequence Table --------
 		SqliteCommand updateSequenceTable = new(
 			$"""
-			 UPDATE "{nameof(Tables.GlobalIdSequence)}"
-			     SET "{Tables.GlobalIdSequence.LastUsedId}" = "{Tables.GlobalIdSequence.LastUsedId}"
+			 UPDATE "{nameof(Tables.MatchIdSequence)}"
+			     SET "{Tables.MatchIdSequence.LastUsedId}" = "{Tables.MatchIdSequence.LastUsedId}"
 			     WHERE ROWID = 1;
 			 """,
 			Connection);
@@ -994,7 +1299,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		// -------- Get MatchId --------
 		SqliteCommand getMatchId = new(
-			$"""SELECT "{Tables.GlobalIdSequence.LastUsedId}" FROM "{nameof(Tables.GlobalIdSequence)}" WHERE ROWID = 1;""",
+			$"""SELECT "{Tables.MatchIdSequence.LastUsedId}" FROM "{nameof(Tables.MatchIdSequence)}" WHERE ROWID = 1;""",
 			Connection);
 
 		AsyncTryValueResult<long, DataStoreError> result = await getMatchId.TryExecuteScalar<long>();
@@ -1049,8 +1354,8 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		// -------- Update Sequence Table --------
 		SqliteCommand updateSequenceTable = new(
 			$"""
-			 UPDATE "{nameof(Tables.GlobalIdSequence)}"
-			     SET "{Tables.GlobalIdSequence.LastUsedId}" = "{Tables.GlobalIdSequence.LastUsedId}"
+			 UPDATE "{nameof(Tables.MatchIdSequence)}"
+			     SET "{Tables.MatchIdSequence.LastUsedId}" = "{Tables.MatchIdSequence.LastUsedId}"
 			     WHERE ROWID = 1;
 			 """,
 			Connection);

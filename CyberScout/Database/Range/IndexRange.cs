@@ -22,3 +22,9 @@ public enum RecordStatus {
 	Stored,
 	Ignored
 }
+
+public enum RecordType {
+	Game,
+	Event,
+	Match
+}
