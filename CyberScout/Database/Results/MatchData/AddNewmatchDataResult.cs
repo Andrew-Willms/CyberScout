@@ -1,5 +1,5 @@
 ﻿using OneOf;
-using OneOf.Types;
+using Success = OneOf.Types.Success;
 
 namespace Database.Results.MatchData;
 
@@ -8,5 +8,5 @@ namespace Database.Results.MatchData;
 [GenerateOneOf]
 public partial class AddNewMatchDataResult : OneOfBase<
 	Success,
-	Exception
+	DataStoreError
 >;

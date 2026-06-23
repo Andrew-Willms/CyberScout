@@ -2,6 +2,8 @@
 using System.Drawing;
 using Comms.Dtos;
 using Comms.Serialization;
+using Database.Range;
+using Database.Results;
 using Database.Results.Event;
 using Database.Results.GameSpec;
 using Database.Results.MatchData;
@@ -11,6 +13,7 @@ using Domain.GameSpecification;
 using Microsoft.Data.Sqlite;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Results;
+using Willmsy.AsyncTryResult;
 using Success = OneOf.Types.Success;
 
 namespace Database.Sqlite;
@@ -47,8 +50,17 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			public const string PublicKey = "PublicKey";
 		}
 
-		public static class GameIdSequence {
-			public const string NextRecordId = "NextRecordId";
+		// I am targeting low spec Android phones with slow storage.
+		// I think I should do this even if it adds overhead.
+		public static class RecordIndex {
+			public const string DeviceId = "DeviceId";
+			public const string StartIndex = "StartIndex";
+			public const string EndIndex = "EndIndex";
+			public const string Status = "Status";
+		}
+
+		public static class GlobalIdSequence {
+			public const string NextId = "NextId";
 		}
 
 		public static class Games {
@@ -65,20 +77,13 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			public const string EventId = "EventId";
 			public const string Data = "Data";
 			public const string Hash = "Hash";
-
-			// If the serialized form of the event data is small enough maybe we skip the hash and send all event data when sharing events.
-			// Depending on the likelihood of cache collisions we may have to double-check the uniqueness of the data once received.
 		}
 
 		public static class EventMetaData {
 			public const string EventId = "EventId";
 			public const string PublishedByDeviceId = "PublishedByDeviceId";
 			public const string TimePublished = "TimePublished";
-			public const string ManuallyCreated = "TimePublished";
-		}
-
-		public static class MatchIdSequence {
-			public const string NextRecordId = "NextRecordId";
+			public const string ManuallyCreated = "ManuallyCreated";
 		}
 
 		public static class MatchData {
@@ -166,13 +171,13 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 INSERT INTO "{nameof(Tables.DatabaseVersion)}" ("{Tables.DatabaseVersion.Version}")
 			 VALUES ({TargetDatabaseVersion});
 			 
-			 CREATE TRIGGER "block_inserts_on_{nameof(Tables.DatabaseVersion)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_inserts_on_{nameof(Tables.DatabaseVersion)}"
 			 BEFORE INSERT ON "{nameof(Tables.DatabaseVersion)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Inserts are not allowed on this table; only updates.');
 			 END;
 			 
-			 CREATE TRIGGER "block_deletes_on_{nameof(Tables.DatabaseVersion)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_deletes_on_{nameof(Tables.DatabaseVersion)}"
 			 BEFORE DELETE ON "{nameof(Tables.DatabaseVersion)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Deletes are not allowed on this table; only updates.');
@@ -196,13 +201,13 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 INSERT INTO "{nameof(Tables.Scout)}" ("{Tables.Scout.Name}")
 			 VALUES ('');
 			 
-			 CREATE TRIGGER "block_inserts_on_{nameof(Tables.Scout)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_inserts_on_{nameof(Tables.Scout)}"
 			 BEFORE INSERT ON "{nameof(Tables.Scout)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Inserts are not allowed on this table; only updates.');
 			 END;
 			 
-			 CREATE TRIGGER "block_deletes_on_{nameof(Tables.Scout)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_deletes_on_{nameof(Tables.Scout)}"
 			 BEFORE DELETE ON "{nameof(Tables.Scout)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Deletes are not allowed on this table; only updates.');
@@ -222,10 +227,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.KnownDevices)}" (
 			 	"{Tables.KnownDevices.DeviceId}" TEXT NOT NULL PRIMARY KEY,
 			 	"{Tables.KnownDevices.DeviceName}" INTEGER NOT NULL,
-			 	"{Tables.KnownDevices.PublicKey}" TEXT NOT NULL,
+			 	"{Tables.KnownDevices.PublicKey}" TEXT NOT NULL
 			 );
 
-			 CREATE TRIGGER "block_updates_on_{nameof(Tables.KnownDevices)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.KnownDevices)}"
 			 BEFORE UPDATE ON "{nameof(Tables.KnownDevices)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Updates are not allowed on this table; only inserts and deletes.');
@@ -239,24 +244,66 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			return false;
 		}
 
-		// -------- GameIdSequence Table --------
-		SqliteCommand createGameIdSequenceTable = new(
+		// -------- RecordIndex Table --------
+		SqliteCommand createRecordIndexTable = new(
 			$"""
-			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.GameIdSequence)}" (
-			 	"{Tables.GameIdSequence.NextRecordId}" INTEGER NOT NULL
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.RecordIndex)}" (
+			 	"{Tables.RecordIndex.DeviceId}" TEXT NOT NULL,
+			 	"{Tables.RecordIndex.StartIndex}" INTEGER NOT NULL,
+			 	"{Tables.RecordIndex.EndIndex}" INTEGER NOT NULL,
+			 	"{Tables.RecordIndex.Status}" TEXT CHECK("{Tables.RecordIndex.Status}" IN ('{nameof(RecordStatus.Stored)}', '{nameof(RecordStatus.Stored)}')),
+			 	
+			 	CHECK ("{Tables.RecordIndex.StartIndex}" <= "{Tables.RecordIndex.EndIndex}"),
+			 	
+			 	PRIMARY KEY ("{Tables.RecordIndex.DeviceId}", "{Tables.RecordIndex.StartIndex}", "{Tables.RecordIndex.EndIndex}")
+			 );
+			 
+			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.RecordIndex)}"
+			 BEFORE UPDATE ON "{nameof(Tables.RecordIndex)}"
+			 BEGIN
+			     SELECT RAISE(ABORT, 'Updates are not allowed on this table; only inserts and deletes.');
+			 END;
+			 
+			 CREATE TRIGGER IF NOT EXISTS "prevent_overlapping_ranges_in_{nameof(Tables.RecordIndex)}"
+			 BEFORE INSERT ON "{nameof(Tables.RecordIndex)}"
+			 FOR EACH ROW
+			 WHEN EXISTS (
+			     SELECT 1
+			     FROM "{nameof(Tables.RecordIndex)}" current
+			     WHERE NEW."{Tables.RecordIndex.DeviceId}" = current."{Tables.RecordIndex.DeviceId}"
+			       AND NEW."{Tables.RecordIndex.StartIndex}" <= current."{Tables.RecordIndex.EndIndex}"
+			       AND NEW."{Tables.RecordIndex.EndIndex}"   >= current."{Tables.RecordIndex.StartIndex}"
+			 )
+			 BEGIN
+			     SELECT RAISE(ABORT, '{nameof(Tables.RecordIndex)} ranges may not overlap.');
+			 END;
+			 """,
+			connection);
+
+		try {
+			await createRecordIndexTable.ExecuteNonQueryAsync();
+		} catch {
+			return false;
+		}
+
+		// -------- GameIdSequence Table --------
+		SqliteCommand createGlobalIdSequenceTable = new(
+			$"""
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.GlobalIdSequence)}" (
+			 	"{Tables.GlobalIdSequence.NextId}" INTEGER NOT NULL
 			 );
 
-			 INSERT INTO "{nameof(Tables.GameIdSequence)}" ("{Tables.GameIdSequence.NextRecordId}")
+			 INSERT INTO "{nameof(Tables.GlobalIdSequence)}" ("{Tables.GlobalIdSequence.NextId}")
 			 VALUES (0);
 
-			 CREATE TRIGGER "block_inserts_on_{nameof(Tables.GameIdSequence)}"
-			 BEFORE INSERT ON "{nameof(Tables.GameIdSequence)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_inserts_on_{nameof(Tables.GlobalIdSequence)}"
+			 BEFORE INSERT ON "{nameof(Tables.GlobalIdSequence)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Inserts are not allowed on this table; only updates.');
 			 END;
 
-			 CREATE TRIGGER "block_deletes_on_{nameof(Tables.GameIdSequence)}"
-			 BEFORE DELETE ON "{nameof(Tables.GameIdSequence)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_deletes_on_{nameof(Tables.GlobalIdSequence)}"
+			 BEFORE DELETE ON "{nameof(Tables.GlobalIdSequence)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Deletes are not allowed on this table; only updates.');
 			 END;
@@ -264,7 +311,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			connection);
 
 		try {
-			await createGameIdSequenceTable.ExecuteNonQueryAsync();
+			await createGlobalIdSequenceTable.ExecuteNonQueryAsync();
 		} catch {
 			return false;
 		}
@@ -284,7 +331,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     PRIMARY KEY ("{Tables.Games.GameId}", "{Tables.Games.DeviceId}")
 			 );
 			 
-			 CREATE TRIGGER "block_updates_on_{nameof(Tables.Games)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.Games)}"
 			 BEFORE UPDATE ON "{nameof(Tables.Games)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Updates are not allowed on this table; only inserts and deletes.');
@@ -307,7 +354,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 	"{Tables.EventData.Hash}" INTEGER NOT NULL,
 			 );
 			 
-			 CREATE TRIGGER "block_updates_on_{nameof(Tables.EventData)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.EventData)}"
 			 BEFORE UPDATE ON "{nameof(Tables.EventData)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Updates are not allowed on this table; only inserts and deletes.');
@@ -336,7 +383,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 			ON DELETE CASCADE
 			 );
 			 
-			 CREATE TRIGGER "block_updates_on_{nameof(Tables.EventMetaData)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.EventMetaData)}"
 			 BEFORE UPDATE ON "{nameof(Tables.EventMetaData)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Updates are not allowed on this table; only inserts and deletes.');
@@ -349,37 +396,6 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		} catch {
 			return false;
 		}
-
-		// -------- MatchIdSequence Table --------
-		SqliteCommand createMatchIdSequenceTable = new(
-			$"""
-			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.MatchIdSequence)}" (
-			 	"{Tables.MatchIdSequence.NextRecordId}" INTEGER NOT NULL
-			 );
-			 
-			 INSERT INTO "{nameof(Tables.MatchIdSequence)}" ("{Tables.MatchIdSequence.NextRecordId}")
-			 VALUES (0);
-			 
-			 CREATE TRIGGER "block_inserts_on_{nameof(Tables.MatchIdSequence)}"
-			 BEFORE INSERT ON "{nameof(Tables.MatchIdSequence)}"
-			 BEGIN
-			     SELECT RAISE(ABORT, 'Inserts are not allowed on this table; only updates.');
-			 END;
-			 
-			 CREATE TRIGGER "block_deletes_on_{nameof(Tables.MatchIdSequence)}"
-			 BEFORE DELETE ON "{nameof(Tables.MatchIdSequence)}"
-			 BEGIN
-			     SELECT RAISE(ABORT, 'Deletes are not allowed on this table; only updates.');
-			 END;
-			 """,
-			connection);
-
-		try {
-			await createMatchIdSequenceTable.ExecuteNonQueryAsync();
-		} catch {
-			return false;
-		}
-
 
 		// -------- MatchData Table --------
 		SqliteCommand createMatchDataTable = new(
@@ -395,7 +411,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 	PRIMARY KEY ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.MatchId}")
 			 );
 
-			 CREATE TRIGGER "block_updates_on_{nameof(Tables.MatchData)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.MatchData)}"
 			 BEFORE UPDATE ON "{nameof(Tables.MatchData)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Updates are not allowed on this table. Only Insert and Delete.');
@@ -429,7 +445,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 			ON DELETE CASCADE,
 			 );
 			 
-			 CREATE TRIGGER "block_updates_on_{nameof(Tables.EditGraphVertices)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.EditGraphVertices)}"
 			 BEFORE UPDATE ON "{nameof(Tables.EditGraphVertices)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Updates are not allowed on this table. Only Insert and Delete.');
@@ -450,6 +466,321 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		throw new NotImplementedException();
 	}
+
+
+
+	private async Task<AsyncTryResult<IndexRange, DataStoreError>> GetRangeByStart(string deviceId, long startIndex, RecordStatus status) {
+
+		SqliteCommand getIndexRange = new(
+			$"""
+			 SELECT * FROM "{nameof(Tables.RecordIndex)}"
+			 WHERE "{Tables.RecordIndex.DeviceId}" = @DeviceId
+			   AND "{Tables.RecordIndex.StartIndex}" = @StartIndex
+			   AND "{Tables.RecordIndex.Status}" = '{nameof(RecordStatus.Stored)}'
+			 """,
+			Connection);
+
+		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = deviceId });
+		getIndexRange.Parameters.Add(new("@StartIndex", SqliteType.Integer) { Value = startIndex });
+		getIndexRange.Parameters.Add(new("@Status", SqliteType.Text) { Value = status });
+
+		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
+
+		throw new NotImplementedException();
+	}
+
+	private async Task<AsyncTryResult<IndexRange, DataStoreError>> GetRangeByEnd(string deviceId, long endIndex, RecordStatus status) {
+
+		SqliteCommand getIndexRange = new(
+			$"""
+			 SELECT * FROM "{nameof(Tables.RecordIndex)}"
+			 WHERE "{Tables.RecordIndex.DeviceId}" = @DeviceId
+			   AND "{Tables.RecordIndex.EndIndex}" = @EndIndex
+			   AND "{Tables.RecordIndex.Status}" = '{nameof(RecordStatus.Stored)}'
+			 """,
+			Connection);
+
+		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = deviceId });
+		getIndexRange.Parameters.Add(new("@EndIndex", SqliteType.Integer) { Value = endIndex });
+		getIndexRange.Parameters.Add(new("@Status", SqliteType.Text) { Value = status });
+
+		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
+
+		throw new NotImplementedException();
+	}
+
+	private async Task<AsyncTryResult<IndexRange, DataStoreError>> GetRangeContaining(string deviceId, long index, RecordStatus status) {
+
+		SqliteCommand getIndexRange = new(
+			$"""
+			 SELECT * FROM "{nameof(Tables.RecordIndex)}"
+			 WHERE "{Tables.RecordIndex.DeviceId}" = @DeviceId
+			   AND "{Tables.RecordIndex.StartIndex}" <= @Index
+			   AND "{Tables.RecordIndex.EndIndex}" >= @EndIndex
+			   AND "{Tables.RecordIndex.Status}" = '{nameof(RecordStatus.Stored)}'
+			 """,
+			Connection);
+
+		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = deviceId });
+		getIndexRange.Parameters.Add(new("@Index", SqliteType.Integer) { Value = index });
+		getIndexRange.Parameters.Add(new("@Status", SqliteType.Text) { Value = status });
+
+		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
+
+		throw new NotImplementedException();
+	}
+
+	private async Task<DataStoreError?> AddRecordRange(string deviceId, IndexRange range) {
+
+		SqliteCommand addRecordRange = new(
+			$"""
+			 INSERT INTO "{nameof(Tables.RecordIndex)}" (
+			     "{Tables.RecordIndex.DeviceId}",
+			     "{Tables.RecordIndex.StartIndex}",
+			     "{Tables.RecordIndex.EndIndex}",
+			     "{Tables.RecordIndex.Status}"
+			 )
+			 VALUES (
+			     @DeviceId,
+			     @StartIndex,
+			     @EndIndex,
+			     @Status
+			 );
+			 """,
+			Connection);
+
+		addRecordRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = deviceId });
+		addRecordRange.Parameters.Add(new("@StartIndex", SqliteType.Integer) { Value = range.Start });
+		addRecordRange.Parameters.Add(new("@EndIndex", SqliteType.Integer) { Value = range.End });
+		addRecordRange.Parameters.Add(new("@Status", SqliteType.Text) { Value = range.Status });
+
+		if (await addRecordRange.ExecuteNonQueryAndExpect(1) is DataStoreError addRecordRangeError) {
+			return await RollbackError.TryRollbackAndReturn(addRecordRangeError, Connection);
+		}
+
+		return null;
+	}
+
+	private async Task<DataStoreError?> DeleteRecordRange(string deviceId, IndexRange range) {
+
+		SqliteCommand deleteRecordRange = new(
+			$"""
+			 DELETE FROM "{nameof(Tables.RecordIndex)}"
+			 WHERE "{Tables.RecordIndex.DeviceId}" = @DeviceId
+			   AND "{Tables.RecordIndex.StartIndex}" = @StartIndex
+			   AND "{Tables.RecordIndex.EndIndex}" = @EndIndex
+			   AND "{Tables.RecordIndex.Status}" = @Status;
+			 """,
+			Connection);
+
+		deleteRecordRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = deviceId });
+		deleteRecordRange.Parameters.Add(new("@StartIndex", SqliteType.Integer) { Value = range.Start });
+		deleteRecordRange.Parameters.Add(new("@EndIndex", SqliteType.Integer) { Value = range.End });
+		deleteRecordRange.Parameters.Add(new("@Status", SqliteType.Text) { Value = range.Status });
+
+		if (await deleteRecordRange.ExecuteNonQueryAndExpect(1) is DataStoreError deleteRecordRangeError) {
+			return await RollbackError.TryRollbackAndReturn(deleteRecordRangeError, Connection);
+		}
+
+		return null;
+	}
+
+
+
+	private async Task<DataStoreError?> AddRecordToIndex(string deviceId, long index) {
+
+		IndexRange? precedingRange = null;
+		IndexRange? subsequentRange = null;
+
+		if (index > 0) {
+
+			AsyncTryResult<IndexRange, DataStoreError> result = await GetRangeByEnd(deviceId, index - 1, RecordStatus.Stored);
+			if (result.IsFailure) {
+				return result.Error;
+			}
+
+			precedingRange = result.Value;
+		}
+
+		if (index < long.MaxValue) {
+
+			AsyncTryResult<IndexRange, DataStoreError> result = await GetRangeByStart(deviceId, index + 1, RecordStatus.Stored);
+			if (result.IsFailure) {
+				return result.Error;
+			}
+
+			subsequentRange = result.Value;
+		}
+
+		switch (precedingRange, subsequentRange) {
+
+			case (not null, not null): {
+
+				IndexRange newRange = new() {
+					Start = precedingRange.Start,
+					End = subsequentRange.End,
+					Status = RecordStatus.Stored
+				};
+
+				if (await DeleteRecordRange(deviceId, precedingRange) is DataStoreError error1) {
+					return error1;
+				}
+
+				if (await DeleteRecordRange(deviceId, subsequentRange) is DataStoreError error2) {
+					return error2;
+				}
+
+				if (await AddRecordRange(deviceId, newRange) is DataStoreError error3) {
+					return error3;
+				}
+
+				return null;
+			}
+
+			case (not null, null): {
+
+				IndexRange newRange = new() {
+					Start = precedingRange.Start,
+					End = index,
+					Status = RecordStatus.Stored
+				};
+
+				if (await DeleteRecordRange(deviceId, precedingRange) is DataStoreError error1) {
+					return error1;
+				}
+
+				if (await AddRecordRange(deviceId, newRange) is DataStoreError error2) {
+					return error2;
+				}
+
+				return null;
+			}
+
+			case (null, not null): {
+
+				IndexRange newRange = new() {
+					Start = index,
+					End = subsequentRange.End,
+					Status = RecordStatus.Stored
+				};
+
+				if (await DeleteRecordRange(deviceId, subsequentRange) is DataStoreError error1) {
+					return error1;
+				}
+
+				if (await AddRecordRange(deviceId, newRange) is DataStoreError error2) {
+					return error2;
+				}
+
+				return null;
+			}
+
+			case (null, null): {
+
+				IndexRange newRange = new() {
+					Start = index,
+					End = index,
+					Status = RecordStatus.Stored
+				};
+
+				if (await AddRecordRange(deviceId, newRange) is DataStoreError error) {
+					return error;
+				}
+
+				return null;
+			}
+		}
+	}
+
+	private async Task<DataStoreError?> DeleteRecordFromIndex(string deviceId, long index) {
+
+		AsyncTryResult<IndexRange, DataStoreError> result = await GetRangeContaining(deviceId, index, RecordStatus.Stored);
+		if (result.IsFailure) {
+			return result.Error;
+		}
+
+		IndexRange currentRange = result.Value;
+
+		switch (index == currentRange.Start, index == currentRange.End) {
+
+			case (false, false): {
+
+				IndexRange lowerRange = new() {
+					Start = currentRange.Start,
+					End = index - 1,
+					Status = RecordStatus.Stored
+				};
+
+				IndexRange upperRange = new() {
+					Start = index + 1,
+					End = currentRange.End,
+					Status = RecordStatus.Stored
+				};
+
+				if (await DeleteRecordRange(deviceId, currentRange) is DataStoreError error1) {
+					return error1;
+				}
+
+				if (await AddRecordRange(deviceId, lowerRange) is DataStoreError error2) {
+					return error2;
+				}
+
+				if (await AddRecordRange(deviceId, upperRange) is DataStoreError error3) {
+					return error3;
+				}
+
+				return null;
+			}
+
+			case (true, false): {
+
+				IndexRange upperRange = new() {
+					Start = index + 1,
+					End = currentRange.End,
+					Status = RecordStatus.Stored
+				};
+
+				if (await DeleteRecordRange(deviceId, currentRange) is DataStoreError error1) {
+					return error1;
+				}
+
+				if (await AddRecordRange(deviceId, upperRange) is DataStoreError error2) {
+					return error2;
+				}
+
+				return null;
+			}
+
+			case (false, true): {
+
+				IndexRange lowerRange = new() {
+					Start = currentRange.Start,
+					End = index - 1,
+					Status = RecordStatus.Stored
+				};
+
+				if (await DeleteRecordRange(deviceId, currentRange) is DataStoreError error1) {
+					return error1;
+				}
+
+				if (await AddRecordRange(deviceId, lowerRange) is DataStoreError error2) {
+					return error2;
+				}
+
+				return null;
+			}
+
+			case (true, true): {
+
+				if (await DeleteRecordRange(deviceId, currentRange) is DataStoreError error) {
+					return error;
+				}
+
+				return null;
+			}
+		}
+	}
+
 
 
 
@@ -490,25 +821,282 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 
 
-	public Task<GetMatchDataResult> GetMatchData(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true,
-		bool ignorePatchVersion = true) {
+	public Task<GetMatchDataFromGameResult> GetMatchDataFromGame(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true, bool ignorePatchVersion = true) {
 		throw new NotImplementedException();
 	}
 
-	public Task<AddNewMatchDataResult> AddNewMatchData(NewMatchDataDto newMatchDataDto) {
-		throw new NotImplementedException();
+	public async Task<AddNewMatchDataResult> AddNewMatchData(NewMatchDataDto newMatchDataDto) {
+
+		// -------- Open Transaction --------
+		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
+		if (await openTransaction.ExecuteNonQueryAndExpect(0) is DataStoreError openTransactionError) {
+			return openTransactionError;
+		}
+
+		// -------- Get MatchId --------
+		SqliteCommand getMatchId = new(
+			$"""SELECT "{Tables.GlobalIdSequence.NextId}" FROM "{nameof(Tables.GlobalIdSequence)}" WHERE ROWID = 1;""",
+			Connection);
+
+		AsyncTryValueResult<long, DataStoreError> result = await getMatchId.TryExecuteScalar<long>();
+		if (result.IsFailure) {
+			return await RollbackError.TryRollbackAndReturn(result.Error, Connection);
+		}
+
+		if (result.Value == long.MaxValue) {
+			return new TableOverflowError();
+		}
+
+		long nextMatchId = result.Value + 1;
+
+		// -------- Add Match Data --------
+		string data = MatchDataToCsv.Serialize(newMatchDataDto.MatchData);
+
+		SqliteCommand addMatchData = new(
+			$"""
+			 INSERT INTO "{nameof(Tables.MatchData)}" (
+			     "{Tables.MatchData.DeviceId}",
+			     "{Tables.MatchData.MatchId}",
+			     "{Tables.MatchData.OriginalDeviceId}",
+			     "{Tables.MatchData.OriginalMatchId}",
+			     "{Tables.MatchData.GameDeviceId}",
+			     "{Tables.MatchData.GameId}",
+			     "{Tables.MatchData.Data}"
+			 )
+			 VALUES (
+			     @DeviceId,
+			     @NextMatchId,
+			     @DeviceId,
+			     @NextMatchId,
+			     @GameDeviceId,
+			     @GameId,
+			     @Data
+			 );
+			 """,
+			Connection);
+
+		addMatchData.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = newMatchDataDto.DeviceId });
+		addMatchData.Parameters.Add(new("@NextMatchId", SqliteType.Integer) { Value = nextMatchId });
+		addMatchData.Parameters.Add(new("@GameDeviceId", SqliteType.Text) { Value = newMatchDataDto.GameDeviceId });
+		addMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = newMatchDataDto.GameId });
+		addMatchData.Parameters.Add(new("@Data", SqliteType.Text) { Value = data });
+
+		if (await addMatchData.ExecuteNonQueryAndExpect(1) is DataStoreError addMatchDataError) {
+			return await RollbackError.TryRollbackAndReturn(addMatchDataError, Connection);
+		}
+
+		// -------- Update Sequence Table --------
+		SqliteCommand updateSequenceTable = new(
+			$"""
+			 UPDATE "{nameof(Tables.GlobalIdSequence)}"
+			     SET "{Tables.GlobalIdSequence.NextId}" = "{Tables.GlobalIdSequence.NextId}" + 1
+			     WHERE ROWID = 1;
+			 """,
+			Connection);
+
+		if (await updateSequenceTable.ExecuteNonQueryAndExpect(1) is DataStoreError updateSequenceTableError) {
+			return await RollbackError.TryRollbackAndReturn(updateSequenceTableError, Connection);
+		}
+
+		// -------- Update Record Index Table --------
+		if (await AddRecordToIndex(newMatchDataDto.DeviceId, nextMatchId) is DataStoreError addRecordError) {
+			return addRecordError;
+		}
+
+		// -------- Commit Transaction --------
+		SqliteCommand commitTransaction = new("COMMIT;", Connection);
+		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is DataStoreError commitError) {
+			return await RollbackError.TryRollbackAndReturn(commitError, Connection);
+		}
+
+		return new Success();
 	}
 
-	public Task<AddNewEditedMatchDataResult> AddNewEditedMatchData(NewMatchDataDto newMatchDataDto) {
-		throw new NotImplementedException();
+	public async Task<AddNewEditedMatchDataResult> AddNewEditedMatchData(NewEditedMatchDataDto newEditedMatchDataDto) {
+
+		// -------- Open Transaction --------
+		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
+		if (await openTransaction.ExecuteNonQueryAndExpect(0) is DataStoreError openTransactionError) {
+			return openTransactionError;
+		}
+
+		// -------- Get MatchId --------
+		SqliteCommand getMatchId = new(
+			$"""SELECT "{Tables.GlobalIdSequence.NextId}" FROM "{nameof(Tables.GlobalIdSequence)}" WHERE ROWID = 1;""",
+			Connection);
+
+		AsyncTryValueResult<long, DataStoreError> result = await getMatchId.TryExecuteScalar<long>();
+		if (result.IsFailure) {
+			return await RollbackError.TryRollbackAndReturn(result.Error, Connection);
+		}
+
+		if (result.Value == long.MaxValue) {
+			return new TableOverflowError();
+		}
+
+		long nextMatchId = result.Value + 1;
+
+		// -------- Add Match Data --------
+		string data = MatchDataToCsv.Serialize(newEditedMatchDataDto.MatchData);
+
+		SqliteCommand addMatchData = new(
+			$"""
+			 INSERT INTO "{nameof(Tables.MatchData)}" (
+			     "{Tables.MatchData.DeviceId}",
+			     "{Tables.MatchData.MatchId}",
+			     "{Tables.MatchData.OriginalDeviceId}",
+			     "{Tables.MatchData.OriginalMatchId}",
+			     "{Tables.MatchData.GameDeviceId}",
+			     "{Tables.MatchData.GameId}",
+			     "{Tables.MatchData.Data}"
+			 )
+			 VALUES (
+			     @DeviceId,
+			     @NextMatchId,
+			     @OriginalDeviceId,
+			     @OriginalMatchId,
+			     @GameDeviceId,
+			     @GameId,
+			     @Data
+			 );
+			 """,
+			Connection);
+
+		addMatchData.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = newEditedMatchDataDto.DeviceId });
+		addMatchData.Parameters.Add(new("@NextMatchId", SqliteType.Integer) { Value = nextMatchId });
+		addMatchData.Parameters.Add(new("@OriginalDeviceId", SqliteType.Text) { Value = newEditedMatchDataDto.OriginalDeviceId });
+		addMatchData.Parameters.Add(new("@OriginalMatchId", SqliteType.Integer) { Value = newEditedMatchDataDto.OriginalMatchId });
+		addMatchData.Parameters.Add(new("@GameDeviceId", SqliteType.Text) { Value = newEditedMatchDataDto.GameDeviceId });
+		addMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = newEditedMatchDataDto.GameId });
+		addMatchData.Parameters.Add(new("@Data", SqliteType.Text) { Value = data });
+
+		if (await addMatchData.ExecuteNonQueryAndExpect(1) is DataStoreError addMatchDataError) {
+			return await RollbackError.TryRollbackAndReturn(addMatchDataError, Connection);
+		}
+
+		// -------- Update Sequence Table --------
+		SqliteCommand updateSequenceTable = new(
+			$"""
+			 UPDATE "{nameof(Tables.GlobalIdSequence)}"
+			     SET "{Tables.GlobalIdSequence.NextId}" = "{Tables.GlobalIdSequence.NextId}" + 1
+			     WHERE ROWID = 1;
+			 """,
+			Connection);
+
+		if (await updateSequenceTable.ExecuteNonQueryAndExpect(1) is DataStoreError updateSequenceTableError) {
+			return await RollbackError.TryRollbackAndReturn(updateSequenceTableError, Connection);
+		}
+
+		// -------- Update Record Index Table --------
+		if (await AddRecordToIndex(newEditedMatchDataDto.DeviceId, nextMatchId) is DataStoreError addRecordError) {
+			return addRecordError;
+		}
+
+		// -------- Commit Transaction --------
+		SqliteCommand commitTransaction = new("COMMIT;", Connection);
+		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is DataStoreError commitError) {
+			return await RollbackError.TryRollbackAndReturn(commitError, Connection);
+		}
+
+		return new Success();
 	}
 
-	public Task<ImportMatchDataResult> ImportMatchData(MatchDataDto importMatchDataDto) {
-		throw new NotImplementedException();
+	public async Task<ImportMatchDataResult> ImportMatchData(MatchDataDto importMatchDataDto) {
+
+		// -------- Open Transaction --------
+		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
+		if (await openTransaction.ExecuteNonQueryAndExpect(0) is DataStoreError openTransactionError) {
+			return openTransactionError;
+		}
+
+		// -------- Add Match Data --------
+		string data = MatchDataToCsv.Serialize(importMatchDataDto.MatchData);
+
+		SqliteCommand addMatchData = new(
+			$"""
+			 INSERT INTO "{nameof(Tables.MatchData)}" (
+			     "{Tables.MatchData.DeviceId}",
+			     "{Tables.MatchData.MatchId}",
+			     "{Tables.MatchData.OriginalDeviceId}",
+			     "{Tables.MatchData.OriginalMatchId}",
+			     "{Tables.MatchData.GameDeviceId}",
+			     "{Tables.MatchData.GameId}",
+			     "{Tables.MatchData.Data}"
+			 )
+			 VALUES (
+			     @DeviceId,
+			     @MatchId,
+			     @OriginalDeviceId,
+			     @OriginalMatchId,
+			     @GameDeviceId,
+			     @GameId,
+			     @Data
+			 );
+			 """,
+			Connection);
+
+		addMatchData.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = importMatchDataDto.DeviceId });
+		addMatchData.Parameters.Add(new("@MatchId", SqliteType.Integer) { Value = importMatchDataDto.DeviceId });
+		addMatchData.Parameters.Add(new("@OriginalDeviceId", SqliteType.Text) { Value = importMatchDataDto.OriginalDeviceId });
+		addMatchData.Parameters.Add(new("@OriginalMatchId", SqliteType.Integer) { Value = importMatchDataDto.OriginalMatchId });
+		addMatchData.Parameters.Add(new("@GameDeviceId", SqliteType.Text) { Value = importMatchDataDto.GameDeviceId });
+		addMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = importMatchDataDto.GameId });
+		addMatchData.Parameters.Add(new("@Data", SqliteType.Text) { Value = data });
+
+		if (await addMatchData.ExecuteNonQueryAndExpect(1) is DataStoreError addMatchDataError) {
+			return await RollbackError.TryRollbackAndReturn(addMatchDataError, Connection);
+		}
+
+		// -------- Update Record Index Table --------
+		if (await AddRecordToIndex(importMatchDataDto.DeviceId, importMatchDataDto.MatchId) is DataStoreError addRecordError) {
+			return addRecordError;
+		}
+
+		// -------- Commit Transaction --------
+		SqliteCommand commitTransaction = new("COMMIT;", Connection);
+		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is DataStoreError commitError) {
+			return await RollbackError.TryRollbackAndReturn(commitError, Connection);
+		}
+
+		return new Success();
 	}
 
-	public Task<DeleteMatchDataResult> DeleteMatchData(MatchDataDto importMatchData) {
-		throw new NotImplementedException();
+	public async Task<DeleteMatchDataResult> DeleteMatchData(MatchDataDto matchDataToDelete) {
+
+		// -------- Open Transaction --------
+		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
+		if (await openTransaction.ExecuteNonQueryAndExpect(0) is DataStoreError openTransactionError) {
+			return openTransactionError;
+		}
+
+		// -------- Delete Match Data --------
+		SqliteCommand deleteMatchData = new(
+			$"""
+			 DELETE FROM "{nameof(Tables.MatchData)}"
+			 WHERE "{Tables.MatchData.OriginalDeviceId}" = @OriginalDeviceId
+			   AND "{Tables.MatchData.OriginalMatchId}" = @OriginalMatchId;
+			 """,
+			Connection);
+
+		deleteMatchData.Parameters.Add(new("@OriginalDeviceId", SqliteType.Text) { Value = matchDataToDelete.OriginalDeviceId });
+		deleteMatchData.Parameters.Add(new("@OriginalMatchId", SqliteType.Integer) { Value = matchDataToDelete.OriginalMatchId });
+
+		if (await deleteMatchData.ExecuteNonQueryAndExpect(1) is DataStoreError addMatchDataError) {
+			return addMatchDataError;
+		}
+
+		// -------- Update Record Index Table --------
+		if (await DeleteRecordFromIndex(matchDataToDelete.DeviceId, matchDataToDelete.MatchId) is DataStoreError addRecordError) {
+			return addRecordError;
+		}
+
+		// -------- Commit Transaction --------
+		SqliteCommand commitTransaction = new("COMMIT;", Connection);
+		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is DataStoreError commitError) {
+			return await RollbackError.TryRollbackAndReturn(commitError, Connection);
+		}
+
+		return new Success();
 	}
 
 	public Task<DeleteMatchDataResult> DeleteMatchDataFromEvent() {
@@ -658,7 +1246,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		});
 	}
 
-	public async Task<GetMatchDataResult> Old_GetMatchData() {
+	public async Task<GetMatchDataFromGameResult> Old_GetMatchData() {
 
 		SqliteCommand getMatchDataCommand = new(
 			$"SELECT * FROM \"{nameof(Tables.MatchData)}\";",
@@ -761,153 +1349,6 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return editChains.Select(x => x.Last()).ToList();
 	}
 
-	public async Task<AddNewMatchDataResult> Old_AddNewMatchData(CreateMatchDataDto matchData) {
-
-		string data = MatchDataToCsv.Serialize(matchData.MatchData).Replace("\'", "\'\'");
-
-		// todo right now it's possible for only one of the two edit columns to be null
-		// see if there is a way to restrict it so they both have to be null or not null together
-
-		// it's scuffed that I have to call WITH AS twice but I can't find a workaround
-		// CTEs can only be consumed by a singled query.
-		SqliteCommand addMatchDataCommand = new(
-			$"""
-			 BEGIN TRANSACTION;
-			 WITH temp AS (
-			     SELECT COUNT(*) AS lastId 
-			     FROM "{nameof(Tables.UnifiedRecords)}"
-			     WHERE "{Tables.UnifiedRecords.DeviceId}" = '{matchData.DeviceId}'
-			 )
-			 INSERT INTO "{nameof(Tables.MatchData)}" (
-			     "{Tables.MatchData.DeviceId}",
-			     "{Tables.MatchData.MatchId}",
-			     "{Tables.MatchData.Data}"
-			 )
-			 VALUES (
-			     '{matchData.DeviceId}',
-			     (SELECT lastId FROM temp) + 1,
-			     '{data}',
-			     {(matchData.EditBasedOn is null ? "NULL" : $"'{matchData.EditBasedOn?.DeviceId}'")},
-			     {(matchData.EditBasedOn is null ? "NULL" : $"'{matchData.EditBasedOn?.RecordId}'")}
-			 );
-			 WITH temp AS (
-			     SELECT COUNT(*) AS lastId 
-			     FROM "{nameof(Tables.UnifiedRecords)}"
-			     WHERE "{Tables.UnifiedRecords.DeviceId}" = '{matchData.DeviceId}'
-			 )
-			 INSERT INTO "{nameof(Tables.UnifiedRecords)}" (
-			     "{Tables.UnifiedRecords.DeviceId}",
-			     "{Tables.UnifiedRecords.RecordId}",
-			     "{Tables.UnifiedRecords.TableName}",
-			     "{Tables.UnifiedRecords.TimeCreated}"
-			 )
-			 VALUES (
-			     '{matchData.DeviceId}',
-			     (SELECT lastId FROM temp) + 1,
-			     '{nameof(Tables.MatchData)}',
-			     'TimeCreated'
-			 );
-			 COMMIT;
-			 """,
-			Connection);
-
-		try {
-			await addMatchDataCommand.ExecuteNonQueryAsync();
-		} catch (Exception exception) {
-			return exception;
-		}
-
-		return new Success();
-	}
-
-	public async Task<ImportMatchDataResult> Old_ImportMatchData(ImportMatchDataDto importMatchData) {
-
-		string data = MatchDataToCsv.Serialize(importMatchData.MatchData).Replace("\'", "\'\'");
-
-		// TODO: consider parameterized queries? less room for SQL injections??
-		// TODO: strings are wrapped in 'string' but ints shouldn't be????
-
-		// TODO: consider switching the order of the inserts. Not sure if that's strictly better, but it 
-		// wouldn't depend on the deferment of the constraints as much.
-		SqliteCommand addMatchDataCommand = new(
-			$"""
-			 BEGIN TRANSACTION;
-			 INSERT INTO "{nameof(Tables.MatchData)}" (
-			     "{Tables.MatchData.DeviceId}",
-			     "{Tables.MatchData.MatchId}",
-			     "{Tables.MatchData.Data}"
-			 )
-			 VALUES (
-			     '{importMatchData.DeviceId}',
-			     '{importMatchData.RecordId}',
-			     '{data}',
-			     {(importMatchData.EditBasedOn is null ? "NULL" : $"'{importMatchData.EditBasedOn?.DeviceId}'")},
-			     {(importMatchData.EditBasedOn is null ? "NULL" : $"'{importMatchData.EditBasedOn?.RecordId}'")}
-			 );
-			 INSERT INTO "{nameof(Tables.UnifiedRecords)}" (
-			     "{Tables.UnifiedRecords.DeviceId}",
-			     "{Tables.UnifiedRecords.RecordId}",
-			     "{Tables.UnifiedRecords.TableName}",
-			     "{Tables.UnifiedRecords.TimeCreated}"
-			 )
-			 VALUES (
-			     '{importMatchData.DeviceId}',
-			     '{importMatchData.RecordId}',
-			     '{nameof(Tables.MatchData)}',
-			     'TimeCreated'
-			 );
-			 COMMIT;
-			 """,
-			Connection);
-
-		try {
-			await addMatchDataCommand.ExecuteNonQueryAsync();
-
-		} catch (Exception exception) {
-
-			SqliteCommand rollbackCommand = new("ROLLBACK;", Connection);
-
-			try {
-				await rollbackCommand.ExecuteNonQueryAsync();
-			} catch (Exception rollbackException) {
-
-				// TODO if a rollback fails consider trying to close and reopen the connection
-				// also consider running something like a "PRAGMA integrity_check"
-				return new CouldNotRollBackError {
-					FirstException = exception,
-					RollbackException = rollbackException
-				};
-			}
-
-			return exception.Message.Contains("UNIQUE") // TODO: check for this error better, this seems jank
-				? new DuplicateMatchDataError()
-				: exception;
-		}
-
-		return new Success();
-	}
-
-	public async Task<bool> Old_DeleteMatchData(ImportMatchDataDto importMatchData) {
-
-		SqliteCommand deleteMatchDataCommand = new(
-			$"""
-			 BEGIN TRANSACTION;
-			 DELETE FROM "{nameof(Tables.MatchData)}"
-			 WHERE "{Tables.MatchData.DeviceId}" = '{importMatchData.DeviceId}' AND
-			       "{Tables.MatchData.MatchId}" = '{importMatchData.RecordId}';
-			 COMMIT;
-			 """,
-			Connection);
-
-		try {
-			await deleteMatchDataCommand.ExecuteNonQueryAsync();
-
-		} catch {
-			return false;
-		}
-
-		return true;
-	}
 
 	public async Task<bool> Old_DeleteAllMatchData() {
 

@@ -8,21 +8,5 @@ namespace Database.Results.MatchData;
 [GenerateOneOf]
 public partial class ImportMatchDataResult : OneOfBase<
 	Success,
-	DuplicateMatchDataError,
-	CouldNotRollBackError,
-	Exception
+	DataStoreError
 >;
-
-
-
-public class DuplicateMatchDataError;
-
-
-
-public class CouldNotRollBackError {
-
-	public required Exception FirstException { get; init; }
-
-	public required Exception RollbackException { get; init; }
-
-}

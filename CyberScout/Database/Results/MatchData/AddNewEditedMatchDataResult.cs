@@ -8,5 +8,5 @@ namespace Database.Results.MatchData;
 [GenerateOneOf]
 public partial class AddNewEditedMatchDataResult : OneOfBase<
 	Success,
-	Exception
+	DataStoreError
 >;

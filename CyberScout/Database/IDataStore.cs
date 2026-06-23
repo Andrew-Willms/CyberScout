@@ -31,15 +31,17 @@ public interface IDataStore {
 
 
 
-	public Task<GetMatchDataResult> GetMatchData(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true, bool ignorePatchVersion = true);
+	//public Task<> GetMatchDataResult
+
+	public Task<GetMatchDataFromGameResult> GetMatchDataFromGame(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true, bool ignorePatchVersion = true);
 
 	public Task<AddNewMatchDataResult> AddNewMatchData(NewMatchDataDto newMatchDataDto);
 
-	public Task<AddNewEditedMatchDataResult> AddNewEditedMatchData(NewMatchDataDto newMatchDataDto);
+	public Task<AddNewEditedMatchDataResult> AddNewEditedMatchData(NewEditedMatchDataDto newEditedMatchDataDto);
 
 	public Task<ImportMatchDataResult> ImportMatchData(MatchDataDto importMatchDataDto);
 
-	public Task<DeleteMatchDataResult> DeleteMatchData(MatchDataDto importMatchData);
+	public Task<DeleteMatchDataResult> DeleteMatchData(MatchDataDto matchDataToDelete);
 
 	public Task<DeleteMatchDataResult> DeleteMatchDataFromEvent();
 
