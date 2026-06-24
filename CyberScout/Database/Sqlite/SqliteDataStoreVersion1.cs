@@ -881,7 +881,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			throw new NotImplementedException();
 		}
 
+		foreach (IndexRange range in relevantRanges) {
+			// delete them
+		}
 
+		foreach (IndexRange ranges in updatedRangeSet.Ranges) {
+			// add them
+		}
+
+		return null;
 	}
 
 	private async Task<DataStoreError?> SetRecordStatus(EventDto eventDto, RecordStatus status) {
