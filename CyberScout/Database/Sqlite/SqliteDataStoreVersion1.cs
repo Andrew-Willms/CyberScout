@@ -12,6 +12,7 @@ using Domain.Data;
 using Domain.GameSpecification;
 using Microsoft.Data.Sqlite;
 using UtilitiesLibrary.Collections;
+using UtilitiesLibrary.Optional;
 using UtilitiesLibrary.Results;
 using Willmsy.AsyncTryResult;
 using Success = OneOf.Types.Success;
@@ -34,10 +35,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 	private const uint TargetDatabaseVersion = 1;
 
-	private enum EventDataSources {
-		TheBlueAlliance,
-		Manual
-	}
+
 
 	private static class Tables {
 
@@ -91,8 +89,6 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			public const string StartIndex = "StartIndex";
 			public const string EndIndex = "EndIndex";
 			public const string Status = "Status";
-			public const string GameDeviceId = "GameDeviceId";
-			public const string GameId = "GameRecordId";
 		}
 
 		// Every device with an internet connection will likely create an event from TBA and then will share this event to other devices.
@@ -137,25 +133,25 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			public const string OriginalMatchId = "OriginalMatchId";
 
 			public const string GameDeviceId = "GameDeviceId";
-			public const string GameRecordId = "GameRecordId";
+			public const string GameId = "GameId";
 			public const string EventDeviceId = "EventDeviceId";
-			public const string EventRecordId = "EventRecordId";
+			public const string EventMetaDataId = "EventMetaDataId";
 			public const string Data = "Data";
 		}
 
 		public static class EditGraphVertices {
 			public const string ChildDeviceId = "ChildDeviceId";
-			public const string ChildRecordId = "ChildRecordId";
+			public const string ChildMatchId = "ChildMatchId";
 
 			// ParentDeviceId and ParentRecordId are not foreign keys because I do not want to require
 			// a device to have the parent match data in order to have descendant match data.
 			public const string ParentDeviceId = "ParentDeviceId";
-			public const string ParentRecordId = "ParentRecordId";
+			public const string ParentMatchId = "ParentMatchId";
 
 			// OriginalDeviceId and OriginalRecordId are not foreign keys because I do not want to require
 			// a device to have the original match data in order to have descendant match data.
 			public const string OriginalDeviceId = "OriginalDeviceId";
-			public const string OriginalRecordId = "OriginalRecordId";
+			public const string OriginalMatchId = "OriginalMatchId";
 
 			public const string Comment = "Comment";
 		}
@@ -535,8 +531,6 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     "{Tables.EventIndex.StartIndex}" INTEGER NOT NULL,
 			     "{Tables.EventIndex.EndIndex}" INTEGER NOT NULL,
 			     "{Tables.EventIndex.Status}" TEXT CHECK("{Tables.EventIndex.Status}" IN ('{nameof(RecordStatus.Stored)}', '{nameof(RecordStatus.Stored)}')),
-			     "{Tables.EventIndex.GameDeviceId}" TEXT NOT NULL,
-			     "{Tables.EventIndex.GameId}" INTEGER NOT NULL,
 			     
 			     CHECK ("{Tables.EventIndex.StartIndex}" <= "{Tables.EventIndex.EndIndex}"),
 			     
@@ -545,12 +539,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     FOREIGN KEY "{Tables.EventIndex.DeviceId}"
 			         REFERENCES "{nameof(Tables.KnownDevices)}" "{Tables.KnownDevices.DeviceId}"
 			             ON UPDATE RESTRICT
-			             ON DELETE RESTRICT,
-			     
-			     FOREIGN KEY ("{Tables.EventIndex.GameDeviceId}", "{Tables.EventIndex.GameId}")
-			         REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.GameId}")
-			             ON UPDATE RESTRICT
-			             ON DELETE RESTRICT,
+			             ON DELETE RESTRICT
 			 );
 			 
 			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.EventIndex)}"
@@ -759,9 +748,9 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     "{Tables.MatchData.OriginalDeviceId}" TEXT NOT NULL,
 			     "{Tables.MatchData.OriginalMatchId}" INTEGER NOT NULL,
 			     "{Tables.MatchData.GameDeviceId}" TEXT NOT NULL,
-			     "{Tables.MatchData.GameRecordId}" INTEGER NOT NULL,
+			     "{Tables.MatchData.GameId}" INTEGER NOT NULL,
 			     "{Tables.MatchData.EventDeviceId}" TEXT NOT NULL,
-			     "{Tables.MatchData.EventRecordId}" INTEGER NOT NULL,
+			     "{Tables.MatchData.EventMetaDataId}" INTEGER NOT NULL,
 			     "{Tables.MatchData.Data}" TEXT NOT NULL,
 			     
 			     PRIMARY KEY ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.MatchId}"),
@@ -771,12 +760,12 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT,
 			     
-			     FOREIGN KEY ("{Tables.MatchData.GameDeviceId}", "{Tables.MatchData.GameRecordId}")
+			     FOREIGN KEY ("{Tables.MatchData.GameDeviceId}", "{Tables.MatchData.GameId}")
 			         REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.GameId}")
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT,
 			 		     
-			     FOREIGN KEY ("{Tables.MatchData.EventDeviceId}", "{Tables.MatchData.EventRecordId}")
+			     FOREIGN KEY ("{Tables.MatchData.EventDeviceId}", "{Tables.MatchData.EventMetaDataId}")
 			         REFERENCES "{nameof(Tables.EventMetaData)}" ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.EventMetaDataId}")
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT
@@ -805,16 +794,16 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EditGraphVertices)}" (
 			     "{Tables.EditGraphVertices.ChildDeviceId}" TEXT NOT NULL,
-			     "{Tables.EditGraphVertices.ChildRecordId}" INTEGER NOT NULL,
+			     "{Tables.EditGraphVertices.ChildMatchId}" INTEGER NOT NULL,
 			     "{Tables.EditGraphVertices.ParentDeviceId}" TEXT NOT NULL,
-			     "{Tables.EditGraphVertices.ParentRecordId}" INTEGER NOT NULL,
+			     "{Tables.EditGraphVertices.ParentMatchId}" INTEGER NOT NULL,
 			     "{Tables.EditGraphVertices.OriginalDeviceId}" TEXT NOT NULL,
-			     "{Tables.EditGraphVertices.OriginalRecordId}" INTEGER NOT NULL,
+			     "{Tables.EditGraphVertices.OriginalMatchId}" INTEGER NOT NULL,
 			     "{Tables.EditGraphVertices.Comment}" TEXT,
 			     
-			     PRIMARY KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildRecordId}, {Tables.EditGraphVertices.ParentDeviceId}", "{Tables.EditGraphVertices.ParentRecordId}"),
+			     PRIMARY KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildMatchId}, {Tables.EditGraphVertices.ParentDeviceId}", "{Tables.EditGraphVertices.ParentMatchId}"),
 			     
-			     FOREIGN KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildRecordId}")
+			     FOREIGN KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildMatchId}")
 			         REFERENCES "{nameof(Tables.MatchData)}" ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.MatchId}")
 			             ON UPDATE RESTRICT
 			             ON DELETE CASCADE
@@ -843,6 +832,267 @@ public class SqliteDataStoreVersion1 : IDataStore {
 	}
 
 
+
+	private async Task<DataStoreError?> AddRecordToIndexxx(string deviceId, long index, RecordStatus status) {
+
+		IndexRange? precedingRange = null;
+		IndexRange? subsequentRange = null;
+
+		if (index > 0) {
+
+			AsyncTryResult<Optional<IndexRange>, DataStoreError> result = await GetRangeByEnd(deviceId, index - 1, status);
+			if (result.IsFailure) {
+				return result.Error;
+			}
+
+			// todo: this is a little clunky, might be able to do better with unions
+			precedingRange = result.Value.HasValue ? result.Value.Value : null;
+		}
+
+		if (index < long.MaxValue) {
+
+			AsyncTryResult<Optional<IndexRange>, DataStoreError> result = await GetRangeByStart(deviceId, index + 1, status);
+			if (result.IsFailure) {
+				return result.Error;
+			}
+
+			// todo: this is a little clunky, might be able to do better with unions
+			subsequentRange = result.Value.HasValue ? result.Value.Value : null;
+		}
+
+		switch (precedingRange, subsequentRange) {
+
+			case (not null, not null): {
+
+				IndexRange newRange = new() {
+					Start = precedingRange.Start,
+					End = subsequentRange.End,
+					Status = RecordStatus.Stored
+				};
+
+				if (await DeleteIndexRange(deviceId, precedingRange) is DataStoreError error1) {
+					return error1;
+				}
+
+				if (await DeleteIndexRange(deviceId, subsequentRange) is DataStoreError error2) {
+					return error2;
+				}
+
+				if (await AddIndexRange(deviceId, newRange) is DataStoreError error3) {
+					return error3;
+				}
+
+				return null;
+			}
+
+			case (not null, null): {
+
+				IndexRange newRange = new() {
+					Start = precedingRange.Start,
+					End = index,
+					Status = RecordStatus.Stored
+				};
+
+				if (await DeleteIndexRange(deviceId, precedingRange) is DataStoreError error1) {
+					return error1;
+				}
+
+				if (await AddIndexRange(deviceId, newRange) is DataStoreError error2) {
+					return error2;
+				}
+
+				return null;
+			}
+
+			case (null, not null): {
+
+				IndexRange newRange = new() {
+					Start = index,
+					End = subsequentRange.End,
+					Status = RecordStatus.Stored
+				};
+
+				if (await DeleteIndexRange(deviceId, subsequentRange) is DataStoreError error1) {
+					return error1;
+				}
+
+				if (await AddIndexRange(deviceId, newRange) is DataStoreError error2) {
+					return error2;
+				}
+
+				return null;
+			}
+
+			case (null, null): {
+
+				IndexRange newRange = new() {
+					Start = index,
+					End = index,
+					Status = RecordStatus.Stored
+				};
+
+				if (await AddIndexRange(deviceId, newRange) is DataStoreError error) {
+					return error;
+				}
+
+				return null;
+			}
+		}
+	}
+
+	private async Task<DataStoreError?> DeleteRecordFromIndexxx(string deviceId, long index, RecordStatus status) {
+
+		AsyncTryResult<IndexRange, DataStoreError> result = await GetRangeContaining(deviceId, index, RecordStatus.Stored);
+		if (result.IsFailure) {
+			return result.Error;
+		}
+
+		IndexRange currentRange = result.Value;
+
+		switch (index == currentRange.Start, index == currentRange.End) {
+
+			case (false, false): {
+
+				IndexRange lowerRange = new() {
+					Start = currentRange.Start,
+					End = index - 1,
+					Status = RecordStatus.Stored
+				};
+
+				IndexRange upperRange = new() {
+					Start = index + 1,
+					End = currentRange.End,
+					Status = RecordStatus.Stored
+				};
+
+				if (await DeleteIndexRange(deviceId, currentRange) is DataStoreError error1) {
+					return error1;
+				}
+
+				if (await AddIndexRange(deviceId, lowerRange) is DataStoreError error2) {
+					return error2;
+				}
+
+				if (await AddIndexRange(deviceId, upperRange) is DataStoreError error3) {
+					return error3;
+				}
+
+				return null;
+			}
+
+			case (true, false): {
+
+				IndexRange upperRange = new() {
+					Start = index + 1,
+					End = currentRange.End,
+					Status = RecordStatus.Stored
+				};
+
+				if (await DeleteIndexRange(deviceId, currentRange) is DataStoreError error1) {
+					return error1;
+				}
+
+				if (await AddIndexRange(deviceId, upperRange) is DataStoreError error2) {
+					return error2;
+				}
+
+				return null;
+			}
+
+			case (false, true): {
+
+				IndexRange lowerRange = new() {
+					Start = currentRange.Start,
+					End = index - 1,
+					Status = RecordStatus.Stored
+				};
+
+				if (await DeleteIndexRange(deviceId, currentRange) is DataStoreError error1) {
+					return error1;
+				}
+
+				if (await AddIndexRange(deviceId, lowerRange) is DataStoreError error2) {
+					return error2;
+				}
+
+				return null;
+			}
+
+			case (true, true): {
+
+				if (await DeleteIndexRange(deviceId, currentRange) is DataStoreError error) {
+					return error;
+				}
+
+				return null;
+			}
+		}
+	}
+
+
+
+	private async Task<DataStoreError?> SetRecordStatus(string deviceId, long index, RecordStatus status) {
+
+		AsyncTryResult<IndexRange, DataStoreError> containingRangeResult = await GetRangeContaining(deviceId, index, status);
+		if (containingRangeResult.IsFailure) {
+			return containingRangeResult.Error;
+		}
+
+		IndexRange containingRange = containingRangeResult.Value;
+		List<IndexRange> relevantRanges = new(3);
+
+		// If the index is at the very start of the containingRange and isn't the first possible index (0) then we need to check the preceding range.
+		if (containingRange.Start == index && index != 0) {
+
+			AsyncTryResult<IndexRange, DataStoreError> precedingRangeResult = await GetRangeContaining(deviceId, index - 1, status);
+
+			if (precedingRangeResult.IsFailure) {
+				return precedingRangeResult.Error;
+			}
+
+			relevantRanges.Add(precedingRangeResult.Value);
+		}
+
+		// The containing range is always relevant.
+		relevantRanges.Add(containingRange);
+
+		// If the index is at the very end of the containingRange and isn't the last possible index (2^63) then we need to check the subsequent range.
+		if (index == containingRange.End && index != long.MaxValue) {
+
+			AsyncTryResult<IndexRange, DataStoreError> subsequentRangeResult = await GetRangeContaining(deviceId, index - 1, status);
+
+			if (subsequentRangeResult.IsFailure) {
+				return subsequentRangeResult.Error;
+			}
+
+			relevantRanges.Add(subsequentRangeResult.Value);
+		}
+
+		// Create the RangeSet.
+		RangeSet? existingRanges = RangeSet.Create(relevantRanges);
+		if (existingRanges is null) {
+			throw new NotImplementedException();
+		}
+
+		RangeSet? updatedRangeSet = existingRanges.OverwriteIndexAndSimplify(index, status);
+		if (updatedRangeSet is null) {
+			throw new NotImplementedException();
+		}
+
+
+	}
+
+	private async Task<DataStoreError?> SetRecordStatus(EventDto eventDto, RecordStatus status) {
+		throw new NotImplementedException();
+	}
+
+	private async Task<DataStoreError?> SetRecordStatus(GameDto gameDto, RecordStatus status) {
+		throw new NotImplementedException();
+	}
+
+	private async Task<DataStoreError?> SetRecordStatusesToNone() {
+		throw new NotImplementedException();
+	}
 
 	private async Task<AsyncTryResult<IndexRange, DataStoreError>> GetRangeByStart(string deviceId, long startIndex, RecordStatus status) {
 
@@ -905,7 +1155,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		throw new NotImplementedException();
 	}
 
-	private async Task<DataStoreError?> AddRecordRange(string deviceId, IndexRange range) {
+	private async Task<DataStoreError?> AddIndexRange(string deviceId, IndexRange range) {
 
 		SqliteCommand addRecordRange = new(
 			$"""
@@ -936,7 +1186,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return null;
 	}
 
-	private async Task<DataStoreError?> DeleteRecordRange(string deviceId, IndexRange range) {
+	private async Task<DataStoreError?> DeleteIndexRange(string deviceId, IndexRange range) {
 
 		SqliteCommand deleteRecordRange = new(
 			$"""
@@ -959,204 +1209,6 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		return null;
 	}
-
-
-
-	private async Task<DataStoreError?> AddRecordToIndex(string deviceId, long index) {
-
-		IndexRange? precedingRange = null;
-		IndexRange? subsequentRange = null;
-
-		if (index > 0) {
-
-			AsyncTryResult<IndexRange, DataStoreError> result = await GetRangeByEnd(deviceId, index - 1, RecordStatus.Stored);
-			if (result.IsFailure) {
-				return result.Error;
-			}
-
-			precedingRange = result.Value;
-		}
-
-		if (index < long.MaxValue) {
-
-			AsyncTryResult<IndexRange, DataStoreError> result = await GetRangeByStart(deviceId, index + 1, RecordStatus.Stored);
-			if (result.IsFailure) {
-				return result.Error;
-			}
-
-			subsequentRange = result.Value;
-		}
-
-		switch (precedingRange, subsequentRange) {
-
-			case (not null, not null): {
-
-				IndexRange newRange = new() {
-					Start = precedingRange.Start,
-					End = subsequentRange.End,
-					Status = RecordStatus.Stored
-				};
-
-				if (await DeleteRecordRange(deviceId, precedingRange) is DataStoreError error1) {
-					return error1;
-				}
-
-				if (await DeleteRecordRange(deviceId, subsequentRange) is DataStoreError error2) {
-					return error2;
-				}
-
-				if (await AddRecordRange(deviceId, newRange) is DataStoreError error3) {
-					return error3;
-				}
-
-				return null;
-			}
-
-			case (not null, null): {
-
-				IndexRange newRange = new() {
-					Start = precedingRange.Start,
-					End = index,
-					Status = RecordStatus.Stored
-				};
-
-				if (await DeleteRecordRange(deviceId, precedingRange) is DataStoreError error1) {
-					return error1;
-				}
-
-				if (await AddRecordRange(deviceId, newRange) is DataStoreError error2) {
-					return error2;
-				}
-
-				return null;
-			}
-
-			case (null, not null): {
-
-				IndexRange newRange = new() {
-					Start = index,
-					End = subsequentRange.End,
-					Status = RecordStatus.Stored
-				};
-
-				if (await DeleteRecordRange(deviceId, subsequentRange) is DataStoreError error1) {
-					return error1;
-				}
-
-				if (await AddRecordRange(deviceId, newRange) is DataStoreError error2) {
-					return error2;
-				}
-
-				return null;
-			}
-
-			case (null, null): {
-
-				IndexRange newRange = new() {
-					Start = index,
-					End = index,
-					Status = RecordStatus.Stored
-				};
-
-				if (await AddRecordRange(deviceId, newRange) is DataStoreError error) {
-					return error;
-				}
-
-				return null;
-			}
-		}
-	}
-
-	private async Task<DataStoreError?> DeleteRecordFromIndex(string deviceId, long index) {
-
-		AsyncTryResult<IndexRange, DataStoreError> result = await GetRangeContaining(deviceId, index, RecordStatus.Stored);
-		if (result.IsFailure) {
-			return result.Error;
-		}
-
-		IndexRange currentRange = result.Value;
-
-		switch (index == currentRange.Start, index == currentRange.End) {
-
-			case (false, false): {
-
-				IndexRange lowerRange = new() {
-					Start = currentRange.Start,
-					End = index - 1,
-					Status = RecordStatus.Stored
-				};
-
-				IndexRange upperRange = new() {
-					Start = index + 1,
-					End = currentRange.End,
-					Status = RecordStatus.Stored
-				};
-
-				if (await DeleteRecordRange(deviceId, currentRange) is DataStoreError error1) {
-					return error1;
-				}
-
-				if (await AddRecordRange(deviceId, lowerRange) is DataStoreError error2) {
-					return error2;
-				}
-
-				if (await AddRecordRange(deviceId, upperRange) is DataStoreError error3) {
-					return error3;
-				}
-
-				return null;
-			}
-
-			case (true, false): {
-
-				IndexRange upperRange = new() {
-					Start = index + 1,
-					End = currentRange.End,
-					Status = RecordStatus.Stored
-				};
-
-				if (await DeleteRecordRange(deviceId, currentRange) is DataStoreError error1) {
-					return error1;
-				}
-
-				if (await AddRecordRange(deviceId, upperRange) is DataStoreError error2) {
-					return error2;
-				}
-
-				return null;
-			}
-
-			case (false, true): {
-
-				IndexRange lowerRange = new() {
-					Start = currentRange.Start,
-					End = index - 1,
-					Status = RecordStatus.Stored
-				};
-
-				if (await DeleteRecordRange(deviceId, currentRange) is DataStoreError error1) {
-					return error1;
-				}
-
-				if (await AddRecordRange(deviceId, lowerRange) is DataStoreError error2) {
-					return error2;
-				}
-
-				return null;
-			}
-
-			case (true, true): {
-
-				if (await DeleteRecordRange(deviceId, currentRange) is DataStoreError error) {
-					return error;
-				}
-
-				return null;
-			}
-		}
-	}
-
-
 
 
 
@@ -1235,7 +1287,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     "{Tables.MatchData.OriginalDeviceId}",
 			     "{Tables.MatchData.OriginalMatchId}",
 			     "{Tables.MatchData.GameDeviceId}",
-			     "{Tables.MatchData.GameRecordId}",
+			     "{Tables.MatchData.GameId}",
 			     "{Tables.MatchData.Data}"
 			 )
 			 VALUES (
@@ -1322,7 +1374,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     "{Tables.MatchData.OriginalDeviceId}",
 			     "{Tables.MatchData.OriginalMatchId}",
 			     "{Tables.MatchData.GameDeviceId}",
-			     "{Tables.MatchData.GameRecordId}",
+			     "{Tables.MatchData.GameId}",
 			     "{Tables.MatchData.Data}"
 			 )
 			 VALUES (
@@ -1395,7 +1447,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     "{Tables.MatchData.OriginalDeviceId}",
 			     "{Tables.MatchData.OriginalMatchId}",
 			     "{Tables.MatchData.GameDeviceId}",
-			     "{Tables.MatchData.GameRecordId}",
+			     "{Tables.MatchData.GameId}",
 			     "{Tables.MatchData.Data}"
 			 )
 			 VALUES (
@@ -1461,8 +1513,8 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Update Record Index Table --------
-		if (await DeleteRecordFromIndex(matchDataToDelete.DeviceId, matchDataToDelete.MatchId) is DataStoreError addRecordError) {
-			return addRecordError;
+		if (await SetRecordStatus(matchDataToDelete.DeviceId, matchDataToDelete.MatchId, RecordStatus.None) is DataStoreError setStatusError) {
+			return setStatusError;
 		}
 
 		// -------- Commit Transaction --------
@@ -1474,23 +1526,109 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return new Success();
 	}
 
-	public Task<DeleteMatchDataResult> DeleteMatchDataFromEvent() {
-
-		throw new NotImplementedException();
-
-	}
-
-	public async Task<DeleteMatchDataResult> DeleteMatchDataFromGame() {
+	public async Task<DeleteMatchDataResult> DeleteMatchDataFromEvent(EventDto eventDto) {
 
 		// -------- Open Transaction --------
 		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
 		if (await openTransaction.ExecuteNonQueryAndExpect(0) is DataStoreError openTransactionError) {
 			return openTransactionError;
 		}
+
+		// -------- Delete Match Data --------
+		SqliteCommand deleteMatchData = new(
+			$"""
+			 DELETE FROM "{nameof(Tables.MatchData)}"
+			 WHERE "{Tables.MatchData.EventDeviceId}" = @EventDeviceId
+			   AND "{Tables.MatchData.EventMetaDataId}" = @EventMetaDataId;
+			 """,
+			Connection);
+
+		deleteMatchData.Parameters.Add(new("@EventDeviceId", SqliteType.Text) { Value = eventDto.DeviceId });
+		deleteMatchData.Parameters.Add(new("@EventMetaDataId", SqliteType.Integer) { Value = eventDto.MetaDataId });
+
+		if (await deleteMatchData.ExecuteNonQueryAndExpect(1) is DataStoreError addMatchDataError) {
+			return addMatchDataError;
+		}
+
+		// -------- Update Record Index Table --------
+		if (await SetRecordStatus(eventDto, RecordStatus.None) is DataStoreError setStatusError) {
+			return setStatusError;
+		}
+
+		// -------- Commit Transaction --------
+		SqliteCommand commitTransaction = new("COMMIT;", Connection);
+		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is DataStoreError commitError) {
+			return await RollbackError.TryRollbackAndReturn(commitError, Connection);
+		}
+
+		return new Success();
 	}
 
-	public Task<DeleteAllMatchDataResult> DeleteAllMatchData() {
-		throw new NotImplementedException();
+	public async Task<DeleteMatchDataResult> DeleteMatchDataFromGame(GameDto gameDto) {
+
+		// -------- Open Transaction --------
+		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
+		if (await openTransaction.ExecuteNonQueryAndExpect(0) is DataStoreError openTransactionError) {
+			return openTransactionError;
+		}
+
+		// -------- Delete Match Data --------
+		SqliteCommand deleteMatchData = new(
+			$"""
+			 DELETE FROM "{nameof(Tables.MatchData)}"
+			 WHERE "{Tables.MatchData.GameDeviceId}" = @GameDeviceId
+			   AND "{Tables.MatchData.GameId}" = @GameId;
+			 """,
+			Connection);
+
+		deleteMatchData.Parameters.Add(new("@GameDeviceId", SqliteType.Text) { Value = gameDto.DeviceId });
+		deleteMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = gameDto.GameId });
+
+		if (await deleteMatchData.ExecuteNonQueryAndExpect(1) is DataStoreError addMatchDataError) {
+			return addMatchDataError;
+		}
+
+		// -------- Update Record Index Table --------
+		if (await SetRecordStatus(gameDto, RecordStatus.None) is DataStoreError setStatusError) {
+			return setStatusError;
+		}
+
+		// -------- Commit Transaction --------
+		SqliteCommand commitTransaction = new("COMMIT;", Connection);
+		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is DataStoreError commitError) {
+			return await RollbackError.TryRollbackAndReturn(commitError, Connection);
+		}
+
+		return new Success();
+	}
+
+	public async Task<DeleteMatchDataResult> DeleteAllMatchData() {
+
+		// -------- Open Transaction --------
+		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
+		if (await openTransaction.ExecuteNonQueryAndExpect(0) is DataStoreError openTransactionError) {
+			return openTransactionError;
+		}
+
+		// -------- Delete Match Data --------
+		SqliteCommand deleteMatchData = new($"DELETE FROM \"{nameof(Tables.MatchData)}\"", Connection);
+
+		if (await deleteMatchData.ExecuteNonQueryAndExpect(1) is DataStoreError addMatchDataError) {
+			return addMatchDataError;
+		}
+
+		// -------- Update Record Index Table --------
+		if (await SetRecordStatusesToNone() is DataStoreError setStatusError) {
+			return setStatusError;
+		}
+
+		// -------- Commit Transaction --------
+		SqliteCommand commitTransaction = new("COMMIT;", Connection);
+		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is DataStoreError commitError) {
+			return await RollbackError.TryRollbackAndReturn(commitError, Connection);
+		}
+
+		return new Success();
 	}
 
 
