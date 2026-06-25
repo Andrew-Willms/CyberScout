@@ -75,11 +75,11 @@ public class SqliteIndexerVersion1 {
 
 
 
-	public async Task<DataStoreError?> SetMatchIndexMetaData(EventDto eventDto, MatchIndexMetaData metaData) {
+	public async Task<BulkSetRecordMetaData> SetMatchIndexMetaData(EventDto eventDto, MatchIndexMetaData metaData) {
 		throw new NotImplementedException();
 	}
 
-	public async Task<DataStoreError?> SetMatchIndexMetaData(GameDto gameDto, MatchIndexMetaData metaData) {
+	public async Task<BulkSetRecordMetaData?> SetMatchIndexMetaData(GameDto gameDto, MatchIndexMetaData metaData) {
 		throw new NotImplementedException();
 	}
 
@@ -306,7 +306,7 @@ public class SqliteIndexerVersion1 {
 		deleteRecordRange.Parameters.Add(new("@Status", SqliteType.Text) { Value = range.MetaData.Status });
 
 		if (await deleteRecordRange.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError deleteRecordRangeError) {
-			return await RollbackError<DeleteDataResult>.TryRollback(deleteRecordRangeError, Connection);
+			return await RollbackError<DeleteDataError>.TryRollback(deleteRecordRangeError, Connection);
 		}
 
 		return Success.Instance;
@@ -357,6 +357,17 @@ public partial class SetRecordMetaDataError : OneOfBase<
 	DeleteRangeFromIndexError,
 	AddRangeToIndexError
 >;
+
+
+public record BulkSetRecordMetaData : AsyncTryValueResult<Success, BulkSetRecordMetaDataError> {
+
+	public BulkSetRecordMetaData(Success value) : base(value) { }
+
+	public BulkSetRecordMetaData(BulkSetRecordMetaDataError error) : base(error) { }
+
+}
+
+public class BulkSetRecordMetaDataError;
 
 
 
@@ -536,10 +547,10 @@ public record DeleteRangeFromIndexResult : AsyncTryValueResult<Success, DeleteRa
 		return new(error);
 	}
 
-	public static implicit operator DeleteRangeFromIndexResult(RollbackError<DeleteDataResult> error) {
+	public static implicit operator DeleteRangeFromIndexResult(RollbackError<DeleteDataError> error) {
 		return new DeleteRangeFromIndexError(error);
 	}
 
 }
 
-public record DeleteRangeFromIndexError(RollbackError<DeleteDataResult> Error);
+public record DeleteRangeFromIndexError(RollbackError<DeleteDataError> Error);

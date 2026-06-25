@@ -85,9 +85,17 @@ public record InsertDataResult(ExecuteNonQueryAndExpectError Error) {
 
 }
 
-public record DeleteDataResult(ExecuteNonQueryAndExpectError Error) {
+public record DeleteDataError(ExecuteNonQueryAndExpectError Error) {
 
-	public static implicit operator DeleteDataResult(ExecuteNonQueryAndExpectError error) {
+	public static implicit operator DeleteDataError(ExecuteNonQueryAndExpectError error) {
+		return new(error);
+	}
+
+}
+
+public record BulkDeleteDataError(ExecuteNonQueryUncheckedError Error) {
+
+	public static implicit operator BulkDeleteDataError(ExecuteNonQueryUncheckedError error) {
 		return new(error);
 	}
 

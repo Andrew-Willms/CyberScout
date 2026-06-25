@@ -39,7 +39,7 @@ public interface IDataStore {
 
 
 
-	public Task<GetMatchDataFromGameResult> GetMatchDataFromGame(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true, bool ignorePatchVersion = true);
+	public Task<GetMatchDataBtGameResult> GetMatchDataFromGame(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true, bool ignorePatchVersion = true);
 
 	public Task<AddNewMatchDataResult> AddNewMatchData(NewMatchDataDto newMatchDataDto);
 
@@ -49,11 +49,11 @@ public interface IDataStore {
 
 	public Task<DeleteMatchDataResult> DeleteMatchData(MatchDataDto matchDataToDelete);
 
-	public Task<DeleteMatchDataResult> DeleteMatchDataFromEvent(EventDto eventDto);
+	public Task<BulkDeleteMatchDataResult> DeleteMatchDataFromEvent(EventDto eventDto);
 
-	public Task<DeleteMatchDataResult> DeleteMatchDataFromGame(GameDto gameDto);
+	public Task<BulkDeleteMatchDataResult> DeleteMatchDataFromGame(GameDto gameDto);
 
-	public Task<DeleteMatchDataResult> DeleteAllMatchData();
+	public Task<BulkDeleteMatchDataResult> DeleteAllMatchData();
 
 
 

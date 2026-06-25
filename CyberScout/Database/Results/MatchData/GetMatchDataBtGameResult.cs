@@ -7,7 +7,7 @@ namespace Database.Results.MatchData;
 
 
 [GenerateOneOf]
-public partial class GetMatchDataFromGameResult : OneOfBase<
+public partial class GetMatchDataBtGameResult : OneOfBase<
 	List<MatchDataDto>,
 	Exception,
 	MatchDataDeserializationError,
