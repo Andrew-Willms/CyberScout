@@ -107,11 +107,6 @@ public static class MatchDataDtoToCsv {
 					stringBuilder.Append(value);
 					break;
 				}
-				case (MultiIntegerDataFieldSpec, int value): {
-					stringBuilder.Append(',');
-					stringBuilder.Append(value);
-					break;
-				}
 				case (SelectionDataFieldSpec selectionDataFieldSpec, Optional<string> optional): {
 
 					if (!optional.HasValue) {

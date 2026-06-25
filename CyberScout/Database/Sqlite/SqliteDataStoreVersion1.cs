@@ -10,6 +10,7 @@ using Database.Results.Scout;
 using Domain.Data;
 using Domain.GameSpecification;
 using Microsoft.Data.Sqlite;
+using SqliteUtilities;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Results;
 using Willmsy.AsyncTryResult;
@@ -61,7 +62,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			return null;
 		}
 
-		if (isEmpty is true && await Create(connection) is not null) {
+		if (isEmpty is true && (await Create(connection)).IsFailure) {
 			return null;
 		}
 
@@ -87,68 +88,78 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return new(connection);
 	}
 
-	private static async Task<DataStoreError?> Create(SqliteConnection connection) {
+	// TODO: Consider wrapping internal errors as CreateDataBaseError if this function gets more complicated.
+	private static async Task<CreateTableResult> Create(SqliteConnection connection) {
 
-		if (await CreateDatabaseVersionTable(connection) is DataStoreError databaseVersionError) {
-			return databaseVersionError;
+		CreateTableResult result = await CreateDatabaseVersionTable(connection);
+		if (result.IsFailure) {
+			return result;
 		}
 
-		if (await CreateScoutTable(connection) is DataStoreError scoutError) {
-			return scoutError;
+		result = await CreateScoutTable(connection);
+		if (result.IsFailure) {
+			return result;
 		}
 
-		if (await CreateKnownDevicesTable(connection) is DataStoreError knownDevicesError) {
-			return knownDevicesError;
+		result = await CreateKnownDevicesTable(connection);
+		if (result.IsFailure) {
+			return result;
 		}
 
-		if (await CreateGameIdSequenceTable(connection) is DataStoreError gameIdSequenceError) {
-			return gameIdSequenceError;
+		result = await CreateGameIdSequenceTable(connection);
+		if (result.IsFailure) {
+			return result;
 		}
 
-		if (await CreateGameIndexTable(connection) is DataStoreError gameIndexError) {
-			return gameIndexError;
+		result = await CreateGameIndexTable(connection);
+		if (result.IsFailure) {
+			return result;
 		}
 
-		if (await CreateGamesTable(connection) is DataStoreError gamesError) {
-			return gamesError;
+		result = await CreateGamesTable(connection);
+		if (result.IsFailure) {
+			return result;
 		}
 
-		if (await CreateEventIdSequenceTable(connection) is DataStoreError eventIdSequenceError) {
-			return eventIdSequenceError;
+		result = await CreateEventIdSequenceTable(connection);
+		if (result.IsFailure) {
+			return result;
 		}
 
-		if (await CreateEventIndexTable(connection) is DataStoreError eventIndexError) {
-			return eventIndexError;
+		result = await CreateEventIndexTable(connection);
+		if (result.IsFailure) {
+			return result;
 		}
 
-		if (await CreateEventMetaDataTable(connection) is DataStoreError eventMetaDataError) {
-			return eventMetaDataError;
+		result = await CreateEventMetaDataTable(connection);
+		if (result.IsFailure) {
+			return result;
 		}
 
-		if (await CreateEventDataTable(connection) is DataStoreError eventDataError) {
-			return eventDataError;
+		result = await CreateEventDataTable(connection);
+		if (result.IsFailure) {
+			return result;
 		}
 
-		if (await CreateMatchIdSequenceTable(connection) is DataStoreError matchIdSequenceError) {
-			return matchIdSequenceError;
+		result = await CreateMatchIdSequenceTable(connection);
+		if (result.IsFailure) {
+			return result;
 		}
 
-		if (await CreateMatchIndexTable(connection) is DataStoreError matchIndexError) {
-			return matchIndexError;
+		result = await CreateMatchIndexTable(connection);
+		if (result.IsFailure) {
+			return result;
 		}
 
-		if (await CreateMatchDataTable(connection) is DataStoreError matchDataError) {
-			return matchDataError;
+		result = await CreateMatchDataTable(connection);
+		if (result.IsFailure) {
+			return result;
 		}
 
-		if (await CreateEditGraphVerticesTable(connection) is DataStoreError editGraphVerticesError) {
-			return editGraphVerticesError;
-		}
-
-		return null;
+		return await CreateEditGraphVerticesTable(connection);
 	}
 
-	private static async Task<DataStoreError?> CreateDatabaseVersionTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateDatabaseVersionTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -173,16 +184,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
-	private static async Task<DataStoreError?> CreateScoutTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateScoutTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -207,16 +212,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
-	private static async Task<DataStoreError?> CreateKnownDevicesTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateKnownDevicesTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -234,16 +233,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
-	private static async Task<DataStoreError?> CreateGameIdSequenceTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateGameIdSequenceTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -268,16 +261,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
-	private static async Task<DataStoreError?> CreateGameIndexTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateGameIndexTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -319,16 +306,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
-	private static async Task<DataStoreError?> CreateGamesTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateGamesTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -357,16 +338,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
-	private static async Task<DataStoreError?> CreateEventIdSequenceTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateEventIdSequenceTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -391,16 +366,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
-	private static async Task<DataStoreError?> CreateEventIndexTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateEventIndexTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -442,16 +411,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
-	private static async Task<DataStoreError?> CreateEventMetaDataTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateEventMetaDataTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -483,16 +446,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
-	private static async Task<DataStoreError?> CreateEventDataTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateEventDataTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -509,16 +466,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
-	private static async Task<DataStoreError?> CreateMatchIdSequenceTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateMatchIdSequenceTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -543,16 +494,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
-	private static async Task<DataStoreError?> CreateMatchIndexTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateMatchIndexTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -607,16 +552,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
-	private static async Task<DataStoreError?> CreateMatchDataTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateMatchDataTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -657,16 +596,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
-	private static async Task<DataStoreError?> CreateEditGraphVerticesTable(SqliteConnection connection) {
+	private static async Task<CreateTableResult> CreateEditGraphVerticesTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -695,13 +628,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		try {
-			await command.ExecuteNonQueryAndExpect(0);
-		} catch (Exception exception) {
-			return DataStoreError.FromException(exception, command);
-		}
-
-		return null;
+		return await command.ExecuteNonQueryAndExpect(0);
 	}
 
 	public static Task<bool> CheckIntegrity(SqliteConnection connection) {
@@ -754,7 +681,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		// -------- Open Transaction --------
 		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
-		if (await openTransaction.ExecuteNonQueryAndExpect(0) is DataStoreError openTransactionError) {
+		if (await openTransaction.ExecuteNonQueryAndExpect(0) is ExecuteNonQueryAndExpectError openTransactionError) {
 			return openTransactionError;
 		}
 
