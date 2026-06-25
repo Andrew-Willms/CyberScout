@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using Database.Range;
 using Microsoft.Data.Sqlite;
 
 namespace Database.Results;
@@ -207,8 +206,4 @@ public record RollbackError : DataStoreError {
 
 
 
-public record RecordAlreadyHasStatusError : DataStoreError {
-	
-	public required RecordStatus Status { get; init; }
-}
-
+public record RangeOperationError : DataStoreError;

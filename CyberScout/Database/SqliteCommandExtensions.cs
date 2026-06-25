@@ -1,7 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using Database.Results;
 using Microsoft.Data.Sqlite;
-using OneOf;
 using Willmsy.AsyncTryResult;
 
 namespace Database;
@@ -60,6 +59,35 @@ public static class SqliteCommandExtensions {
 		[CallerMemberName] string callerMemberName = "",
 		[CallerArgumentExpression(nameof(command))] string? commandName = null)
 		where T : struct {
+
+		try {
+			object? result = await command.ExecuteScalarAsync();
+
+			if (result is T value) {
+				return value;
+			}
+
+			return new ParseError {
+				CommandText = command.CommandText,
+				ExpectedType = typeof(T).FullName,
+				ActualType = result?.GetType().FullName,
+				StringValue = result?.ToString(),
+				CallerFilePath = callerFilePath,
+				CallerMemberName = callerMemberName,
+				CommandName = commandName
+			};
+
+		} catch (Exception exception) {
+			return DataStoreError.FromException(exception, command, callerFilePath, callerMemberName, commandName);
+		}
+	}
+
+	public static async Task<AsyncTryResult<T, DataStoreError>> TryExecuteReferenceScalar<T>(
+		this SqliteCommand command,
+		[CallerFilePath] string callerFilePath = "",
+		[CallerMemberName] string callerMemberName = "",
+		[CallerArgumentExpression(nameof(command))] string? commandName = null)
+		where T : class {
 
 		try {
 			object? result = await command.ExecuteScalarAsync();

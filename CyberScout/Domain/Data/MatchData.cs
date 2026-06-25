@@ -162,7 +162,7 @@ public class MatchData : IEquatable<MatchData> {
 				break;
 
 			case MatchType.Qualification:
-				uint matchCount = (uint)eventSchedule.QualificationMatches.Count;
+				uint matchCount = (uint)eventSchedule.Matches.Count;
 				if (match.MatchNumber > matchCount) {
 					errorSink(new BadMatchNumberError {
 						MatchNumber = match.MatchNumber,

@@ -25,7 +25,7 @@ public class MatchDataDto {
 
 	public required string EventDeviceId { get; init; }
 
-	public required long EventId { get; init; }
+	public required long EventMetaDataId { get; init; }
 
 
 
@@ -82,7 +82,7 @@ public class MatchDataDto {
 			GameDeviceId = gameDeviceId,
 			GameId = gameId,
 			EventDeviceId = eventDeviceId,
-			EventId = eventId
+			EventMetaDataId = eventId
 		};
 	}
 

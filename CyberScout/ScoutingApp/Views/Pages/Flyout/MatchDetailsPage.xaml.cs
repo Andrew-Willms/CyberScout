@@ -1,8 +1,8 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
-using Domain.Dtos;
-using Domain.Serialization;
+using Comms.Dtos;
+using Comms.Serialization;
 using Microsoft.Maui.Controls;
 using ScoutingApp.AppManagement;
 using ScoutingApp.Views.Pages.Match;
@@ -18,13 +18,13 @@ public partial class MatchDetailsPage : ContentPage, INotifyPropertyChanged {
 	public static string Route => $"{SavedMatchesPage.Route}/MatchDetails";
 	public static string RouteFromSavedMatchesPage => "/MatchDetails";
 
-	public const string MatchDataNavigationParameterName = nameof(ImportMatchDataDto);
+	public const string MatchDataNavigationParameterName = nameof(MatchDataDto);
 	public const string MatchDeleterNavigationParameterName = nameof(MatchDeleter);
 
 	private AppManager AppManager { get; }
 	private IErrorPresenter ErrorPresenter { get; }
 
-	public ImportMatchDataDto SavedImportMatch {
+	public MatchDataDto SavedImportMatch {
 		get;
 		set {
 			field = value;
@@ -41,7 +41,7 @@ public partial class MatchDetailsPage : ContentPage, INotifyPropertyChanged {
 		}
 	} = null!;
 
-	public Func<ImportMatchDataDto, Task<bool>> MatchDeleter { get; init; } = null!;
+	public Func<MatchDataDto, Task<bool>> MatchDeleter { get; init; } = null!;
 
 
 

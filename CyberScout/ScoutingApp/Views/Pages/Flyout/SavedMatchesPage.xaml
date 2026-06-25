@@ -4,7 +4,7 @@
 	xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 	xmlns:flyout="clr-namespace:ScoutingApp.Views.Pages.Flyout"
-	xmlns:serialization="clr-namespace:Domain.Serialization;assembly=Domain"
+	xmlns:dtos="clr-namespace:Comms.Dtos;assembly=Comms"
 	x:Class="ScoutingApp.Views.Pages.Flyout.SavedMatchesPage"
 	x:DataType="flyout:SavedMatchesPage"
 	Loaded="SavedMatchesPage_OnLoaded"
@@ -44,7 +44,7 @@
 				ItemsLayout="VerticalGrid, 1">
 
 				<CollectionView.ItemTemplate>
-					<DataTemplate x:DataType="serialization:ImportMatchDataDto">
+					<DataTemplate x:DataType="dtos:MatchDataDto">
 						<Grid Margin="0">
 
 							<Grid.ColumnDefinitions>

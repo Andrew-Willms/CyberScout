@@ -43,9 +43,9 @@ public interface IDataStore {
 
 	public Task<DeleteMatchDataResult> DeleteMatchData(MatchDataDto matchDataToDelete);
 
-	public Task<DeleteMatchDataResult> DeleteMatchDataFromEvent();
+	public Task<DeleteMatchDataResult> DeleteMatchDataFromEvent(EventDto eventDto);
 
-	public Task<DeleteMatchDataResult> DeleteMatchDataFromGame();
+	public Task<DeleteMatchDataResult> DeleteMatchDataFromGame(GameDto gameDto);
 
 	public Task<DeleteMatchDataResult> DeleteAllMatchData();
 

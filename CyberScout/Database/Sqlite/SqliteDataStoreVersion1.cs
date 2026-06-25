@@ -2,7 +2,6 @@
 using System.Drawing;
 using Comms.Dtos;
 using Comms.Serialization;
-using Database.Range;
 using Database.Results;
 using Database.Results.Event;
 using Database.Results.GameSpec;
@@ -12,7 +11,6 @@ using Domain.Data;
 using Domain.GameSpecification;
 using Microsoft.Data.Sqlite;
 using UtilitiesLibrary.Collections;
-using UtilitiesLibrary.Optional;
 using UtilitiesLibrary.Results;
 using Willmsy.AsyncTryResult;
 using Success = OneOf.Types.Success;
@@ -35,135 +33,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 	private const uint TargetDatabaseVersion = 1;
 
-
-
-	private static class Tables {
-
-		// -------- General --------
-
-		public static class DatabaseVersion {
-			public const string Version = "Version";
-		}
-
-		public static class Scout {
-			public const string Name = "Name";
-		}
-
-		public static class KnownDevices {
-			public const string DeviceId = "DeviceId";
-			public const string DeviceName = "DeviceName";
-			public const string PublicKey = "PublicKey";
-		}
-
-		// -------- Game --------
-
-		public static class GameIdSequence {
-			public const string LastUsedId = "LastUsedId";
-		}
-
-		public static class GameIndex {
-			public const string DeviceId = "DeviceId";
-			public const string StartIndex = "StartIndex";
-			public const string EndIndex = "EndIndex";
-			public const string Status = "Status";
-		}
-
-		public static class Games {
-			public const string DeviceId = "DeviceId";
-			public const string GameId = "GameId";
-			public const string TimePublished = "TimePublished";
-			public const string Data = "Data";
-			public const string MajorVersion = "MajorVersion";
-			public const string MinorVersion = "MinorVersion";
-			public const string PatchVersion = "PatchVersion";
-		}
-
-		// -------- Event --------
-
-		public static class EventIdSequence {
-			public const string LastUsedId = "LastUsedId";
-		}
-
-		public static class EventIndex {
-			public const string DeviceId = "DeviceId";
-			public const string StartIndex = "StartIndex";
-			public const string EndIndex = "EndIndex";
-			public const string Status = "Status";
-		}
-
-		// Every device with an internet connection will likely create an event from TBA and then will share this event to other devices.
-		// This will result in a decent number of records being shared with little purpose. However, each even should only be about the same
-		// amount of data as a match. I don't think it will meaningfully slow things down, and it's very convenient to treat everything the same.
-		public static class EventMetaData {
-			public const string DeviceId = "DeviceId";
-			public const string EventMetaDataId = "EventMetaDataId";
-			public const string EventDataId = "EventDataId";
-			public const string TimePublished = "TimePublished";
-			public const string Source = "Source";
-		}
-
-		public static class EventData {
-			public const string EventDataId = "EventDataId";
-			public const string Data = "Data";
-		}
-
-		// -------- Match --------
-
-		public static class MatchIdSequence {
-			public const string LastUsedId = "LastUsedId";
-		}
-
-		public static class MatchIndex {
-			public const string DeviceId = "DeviceId";
-			public const string StartIndex = "StartIndex";
-			public const string EndIndex = "EndIndex";
-			public const string Status = "Status";
-			public const string GameDeviceId = "GameDeviceId";
-			public const string GameId = "GameId";
-			public const string EventDataId = "EventDataId";
-		}
-
-		public static class MatchData {
-			public const string DeviceId = "DeviceId";
-			public const string MatchId = "MatchId";
-
-			// OriginalDeviceId and OriginalRecordId are not foreign keys because I do not want to require
-			// a device to have the original match data in order to have descendant match data.
-			public const string OriginalDeviceId = "OriginalDeviceId";
-			public const string OriginalMatchId = "OriginalMatchId";
-
-			public const string GameDeviceId = "GameDeviceId";
-			public const string GameId = "GameId";
-			public const string EventDeviceId = "EventDeviceId";
-			public const string EventMetaDataId = "EventMetaDataId";
-			public const string Data = "Data";
-		}
-
-		public static class EditGraphVertices {
-			public const string ChildDeviceId = "ChildDeviceId";
-			public const string ChildMatchId = "ChildMatchId";
-
-			// ParentDeviceId and ParentRecordId are not foreign keys because I do not want to require
-			// a device to have the parent match data in order to have descendant match data.
-			public const string ParentDeviceId = "ParentDeviceId";
-			public const string ParentMatchId = "ParentMatchId";
-
-			// OriginalDeviceId and OriginalRecordId are not foreign keys because I do not want to require
-			// a device to have the original match data in order to have descendant match data.
-			public const string OriginalDeviceId = "OriginalDeviceId";
-			public const string OriginalMatchId = "OriginalMatchId";
-
-			public const string Comment = "Comment";
-		}
-
-	}
-
 	private readonly SqliteConnection Connection;
+
+	private readonly SqliteIndexerVersion1 Indexer;
 
 
 
 	private SqliteDataStoreVersion1(SqliteConnection connection) {
 		Connection = connection;
+		Indexer = new(connection);
 	}
 
 	public static async Task<SqliteDataStoreVersion1?> Initialize(string dbPath) {
@@ -827,197 +705,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 	}
 
 	public static Task<bool> CheckIntegrity(SqliteConnection connection) {
-
 		throw new NotImplementedException();
-	}
-
-
-
-	private async Task<DataStoreError?> SetRecordStatus(string deviceId, long index, RecordStatus status) {
-
-		AsyncTryResult<IndexRange, DataStoreError> containingRangeResult = await GetRangeContaining(deviceId, index, status);
-		if (containingRangeResult.IsFailure) {
-			return containingRangeResult.Error;
-		}
-
-		IndexRange containingRange = containingRangeResult.Value;
-		List<IndexRange> relevantRanges = new(3);
-
-		// If the index is at the very start of the containingRange and isn't the first possible index (0) then we need to check the preceding range.
-		if (containingRange.Start == index && index != 0) {
-
-			AsyncTryResult<IndexRange, DataStoreError> precedingRangeResult = await GetRangeContaining(deviceId, index - 1, status);
-
-			if (precedingRangeResult.IsFailure) {
-				return precedingRangeResult.Error;
-			}
-
-			relevantRanges.Add(precedingRangeResult.Value);
-		}
-
-		// The containing range is always relevant.
-		relevantRanges.Add(containingRange);
-
-		// If the index is at the very end of the containingRange and isn't the last possible index (2^63) then we need to check the subsequent range.
-		if (index == containingRange.End && index != long.MaxValue) {
-
-			AsyncTryResult<IndexRange, DataStoreError> subsequentRangeResult = await GetRangeContaining(deviceId, index - 1, status);
-
-			if (subsequentRangeResult.IsFailure) {
-				return subsequentRangeResult.Error;
-			}
-
-			relevantRanges.Add(subsequentRangeResult.Value);
-		}
-
-		// Create the RangeSet.
-		RangeSet? existingRanges = RangeSet.Create(relevantRanges);
-		if (existingRanges is null) {
-			throw new NotImplementedException();
-		}
-
-		RangeSet? updatedRangeSet = existingRanges.OverwriteIndexAndSimplify(index, status);
-		if (updatedRangeSet is null) {
-			throw new NotImplementedException();
-		}
-
-		foreach (IndexRange range in relevantRanges) {
-			// delete them
-		}
-
-		foreach (IndexRange ranges in updatedRangeSet.Ranges) {
-			// add them
-		}
-
-		return null;
-	}
-
-	private async Task<DataStoreError?> SetRecordStatus(EventDto eventDto, RecordStatus status) {
-		throw new NotImplementedException();
-	}
-
-	private async Task<DataStoreError?> SetRecordStatus(GameDto gameDto, RecordStatus status) {
-		throw new NotImplementedException();
-	}
-
-	private async Task<DataStoreError?> SetRecordStatusesToNone() {
-		throw new NotImplementedException();
-	}
-
-	private async Task<AsyncTryResult<IndexRange, DataStoreError>> GetRangeByStart(string deviceId, long startIndex, RecordStatus status) {
-
-		SqliteCommand getIndexRange = new(
-			$"""
-			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
-			 WHERE "{Tables.MatchIndex.DeviceId}" = @DeviceId
-			   AND "{Tables.MatchIndex.StartIndex}" = @StartIndex
-			   AND "{Tables.MatchIndex.Status}" = '{nameof(RecordStatus.Stored)}'
-			 """,
-			Connection);
-
-		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = deviceId });
-		getIndexRange.Parameters.Add(new("@StartIndex", SqliteType.Integer) { Value = startIndex });
-		getIndexRange.Parameters.Add(new("@Status", SqliteType.Text) { Value = status });
-
-		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
-
-		throw new NotImplementedException();
-	}
-
-	private async Task<AsyncTryResult<IndexRange, DataStoreError>> GetRangeByEnd(string deviceId, long endIndex, RecordStatus status) {
-
-		SqliteCommand getIndexRange = new(
-			$"""
-			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
-			 WHERE "{Tables.MatchIndex.DeviceId}" = @DeviceId
-			   AND "{Tables.MatchIndex.EndIndex}" = @EndIndex
-			   AND "{Tables.MatchIndex.Status}" = '{nameof(RecordStatus.Stored)}'
-			 """,
-			Connection);
-
-		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = deviceId });
-		getIndexRange.Parameters.Add(new("@EndIndex", SqliteType.Integer) { Value = endIndex });
-		getIndexRange.Parameters.Add(new("@Status", SqliteType.Text) { Value = status });
-
-		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
-
-		throw new NotImplementedException();
-	}
-
-	private async Task<AsyncTryResult<IndexRange, DataStoreError>> GetRangeContaining(string deviceId, long index, RecordStatus status) {
-
-		SqliteCommand getIndexRange = new(
-			$"""
-			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
-			 WHERE "{Tables.MatchIndex.DeviceId}" = @DeviceId
-			   AND "{Tables.MatchIndex.StartIndex}" <= @Index
-			   AND "{Tables.MatchIndex.EndIndex}" >= @EndIndex
-			   AND "{Tables.MatchIndex.Status}" = '{nameof(RecordStatus.Stored)}'
-			 """,
-			Connection);
-
-		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = deviceId });
-		getIndexRange.Parameters.Add(new("@Index", SqliteType.Integer) { Value = index });
-		getIndexRange.Parameters.Add(new("@Status", SqliteType.Text) { Value = status });
-
-		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
-
-		throw new NotImplementedException();
-	}
-
-	private async Task<DataStoreError?> AddIndexRange(string deviceId, IndexRange range) {
-
-		SqliteCommand addRecordRange = new(
-			$"""
-			 INSERT INTO "{nameof(Tables.MatchIndex)}" (
-			     "{Tables.MatchIndex.DeviceId}",
-			     "{Tables.MatchIndex.StartIndex}",
-			     "{Tables.MatchIndex.EndIndex}",
-			     "{Tables.MatchIndex.Status}"
-			 )
-			 VALUES (
-			     @DeviceId,
-			     @StartIndex,
-			     @EndIndex,
-			     @Status
-			 );
-			 """,
-			Connection);
-
-		addRecordRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = deviceId });
-		addRecordRange.Parameters.Add(new("@StartIndex", SqliteType.Integer) { Value = range.Start });
-		addRecordRange.Parameters.Add(new("@EndIndex", SqliteType.Integer) { Value = range.End });
-		addRecordRange.Parameters.Add(new("@Status", SqliteType.Text) { Value = range.Status });
-
-		if (await addRecordRange.ExecuteNonQueryAndExpect(1) is DataStoreError addRecordRangeError) {
-			return await RollbackError.TryRollbackAndReturn(addRecordRangeError, Connection);
-		}
-
-		return null;
-	}
-
-	private async Task<DataStoreError?> DeleteIndexRange(string deviceId, IndexRange range) {
-
-		SqliteCommand deleteRecordRange = new(
-			$"""
-			 DELETE FROM "{nameof(Tables.MatchIndex)}"
-			 WHERE "{Tables.MatchIndex.DeviceId}" = @DeviceId
-			   AND "{Tables.MatchIndex.StartIndex}" = @StartIndex
-			   AND "{Tables.MatchIndex.EndIndex}" = @EndIndex
-			   AND "{Tables.MatchIndex.Status}" = @Status;
-			 """,
-			Connection);
-
-		deleteRecordRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = deviceId });
-		deleteRecordRange.Parameters.Add(new("@StartIndex", SqliteType.Integer) { Value = range.Start });
-		deleteRecordRange.Parameters.Add(new("@EndIndex", SqliteType.Integer) { Value = range.End });
-		deleteRecordRange.Parameters.Add(new("@Status", SqliteType.Text) { Value = range.Status });
-
-		if (await deleteRecordRange.ExecuteNonQueryAndExpect(1) is DataStoreError deleteRecordRangeError) {
-			return await RollbackError.TryRollbackAndReturn(deleteRecordRangeError, Connection);
-		}
-
-		return null;
 	}
 
 
@@ -1072,7 +760,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		// -------- Get MatchId --------
 		SqliteCommand getMatchId = new(
-			$"""SELECT "{Tables.MatchIdSequence.LastUsedId}" FROM "{nameof(Tables.MatchIdSequence)}" WHERE ROWID = 1;""",
+			$"SELECT \"{Tables.MatchIdSequence.LastUsedId}\" FROM \"{nameof(Tables.MatchIdSequence)}\" WHERE ROWID = 1;",
 			Connection);
 
 		AsyncTryValueResult<long, DataStoreError> result = await getMatchId.TryExecuteScalar<long>();
@@ -1136,8 +824,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Update Record Index Table --------
-		if (await AddRecordToIndex(newMatchDataDto.DeviceId, nextMatchId) is DataStoreError addRecordError) {
-			return addRecordError;
+		MatchIndexMetaData metaData = MatchIndexMetaData.CreateStoredMatch(
+			newMatchDataDto.GameDeviceId, newMatchDataDto.GameId, newMatchDataDto.EventDeviceId, newMatchDataDto.EventMetaDataId);
+
+		if (await Indexer.SetMatchIndexMetaData(newMatchDataDto.DeviceId, nextMatchId, metaData) is DataStoreError updateIndexError) {
+			return updateIndexError;
 		}
 
 		// -------- Commit Transaction --------
@@ -1225,8 +916,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Update Record Index Table --------
-		if (await AddRecordToIndex(newEditedMatchDataDto.DeviceId, nextMatchId) is DataStoreError addRecordError) {
-			return addRecordError;
+		MatchIndexMetaData metaData = MatchIndexMetaData.CreateStoredMatch(
+			newEditedMatchDataDto.GameDeviceId, newEditedMatchDataDto.GameId, newEditedMatchDataDto.EventDeviceId, newEditedMatchDataDto.EventMetaDataId);
+
+		if (await Indexer.SetMatchIndexMetaData(newEditedMatchDataDto.DeviceId, nextMatchId, metaData) is DataStoreError updateIndexError) {
+			return updateIndexError;
 		}
 
 		// -------- Commit Transaction --------
@@ -1285,7 +979,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Update Record Index Table --------
-		if (await AddRecordToIndex(importMatchDataDto.DeviceId, importMatchDataDto.MatchId) is DataStoreError addRecordError) {
+		MatchIndexMetaData metaData = MatchIndexMetaData.CreateStoredMatch(
+			importMatchDataDto.GameDeviceId, importMatchDataDto.GameId, importMatchDataDto.EventDeviceId, importMatchDataDto.EventMetaDataId);
+
+		if (await Indexer.SetMatchIndexMetaData(importMatchDataDto.DeviceId, importMatchDataDto.MatchId, metaData) is DataStoreError addRecordError) {
 			return addRecordError;
 		}
 
@@ -1323,8 +1020,9 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Update Record Index Table --------
-		if (await SetRecordStatus(matchDataToDelete.DeviceId, matchDataToDelete.MatchId, RecordStatus.None) is DataStoreError setStatusError) {
-			return setStatusError;
+		MatchIndexMetaData metaData = MatchIndexMetaData.CreateNoneMatch();
+		if (await Indexer.SetMatchIndexMetaData(matchDataToDelete.DeviceId, matchDataToDelete.MatchId, metaData) is DataStoreError updateIndexError) {
+			return updateIndexError;
 		}
 
 		// -------- Commit Transaction --------
@@ -1361,8 +1059,9 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Update Record Index Table --------
-		if (await SetRecordStatus(eventDto, RecordStatus.None) is DataStoreError setStatusError) {
-			return setStatusError;
+		MatchIndexMetaData metaData = MatchIndexMetaData.CreateNoneMatch();
+		if (await Indexer.SetMatchIndexMetaData(eventDto, metaData) is DataStoreError updateIndexError) {
+			return updateIndexError;
 		}
 
 		// -------- Commit Transaction --------
@@ -1399,8 +1098,9 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Update Record Index Table --------
-		if (await SetRecordStatus(gameDto, RecordStatus.None) is DataStoreError setStatusError) {
-			return setStatusError;
+		MatchIndexMetaData metaData = MatchIndexMetaData.CreateNoneMatch();
+		if (await Indexer.SetMatchIndexMetaData(gameDto, metaData) is DataStoreError updateIndexError) {
+			return updateIndexError;
 		}
 
 		// -------- Commit Transaction --------
@@ -1428,8 +1128,8 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Update Record Index Table --------
-		if (await SetRecordStatusesToNone() is DataStoreError setStatusError) {
-			return setStatusError;
+		if (await Indexer.ResetMatchIndex() is DataStoreError updateIndexError) {
+			return updateIndexError;
 		}
 
 		// -------- Commit Transaction --------
@@ -1443,13 +1143,41 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 
 
-	public Task<GetLastScoutResult> GetLastScout() {
-		throw new NotImplementedException();
+	public async Task<GetLastScoutResult> GetLastScout() {
+
+		SqliteCommand command = new(
+			$"SELECT \"{Tables.Scout.Name}\" FROM \"{nameof(Tables.Scout)}\" WHERE ROWID = 1;",
+			Connection
+		);
+
+		AsyncTryResult<string, DataStoreError> result = await command.TryExecuteReferenceScalar<string>();
+		if (result.IsFailure) {
+			return result.Error;
+		}
+
+		return result.Value;
 	}
 
-	public Task<SetLastScoutResult> SetLastScout(string scoutName) {
-		throw new NotImplementedException();
+	public async Task<SetLastScoutResult> SetLastScout(string scoutName) {
+
+		SqliteCommand command = new(
+			$"""
+			 UPDATE "{nameof(Tables.Scout)}"
+			 SET "{Tables.Scout.Name}" = @Name
+			 WHERE ROWID = 1;
+			 """,
+			Connection);
+
+		command.Parameters.Add(new("@Name", SqliteType.Text) { Value = scoutName });
+
+		DataStoreError? error = await command.ExecuteNonQueryAndExpect(1);
+		if (error is not null) {
+			return error;
+		}
+
+		return new Success();
 	}
+
 
 
 	public Task<List<GameSpec>> Old_GetGameSpecs() {
@@ -1677,69 +1405,6 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		return editChains.Select(x => x.Last()).ToList();
-	}
-
-
-	public async Task<bool> Old_DeleteAllMatchData() {
-
-		SqliteCommand deleteMatchDataCommand = new(
-			$"""
-			 BEGIN TRANSACTION;
-			 DELETE FROM "{nameof(Tables.MatchData)}";
-			 COMMIT;
-			 """,
-			Connection);
-
-		try {
-			await deleteMatchDataCommand.ExecuteNonQueryAsync();
-
-		} catch {
-			return false;
-		}
-
-		return true;
-	}
-
-	public async Task<string?> Old_GetLastScout() {
-
-		SqliteCommand command = new(
-			$"SELECT \"{Tables.Scout.Name}\" FROM \"{nameof(Tables.Scout)}\" WHERE ROWID = 1;",
-			Connection
-		);
-
-		try {
-			object? result = await command.ExecuteScalarAsync();
-
-			return result as string;
-
-		} catch {
-			return null;
-		}
-	}
-
-	public async Task<bool> Old_SetLastScout(string scoutName) {
-
-		// TODO better SQL sanitization (here and above)
-		if (scoutName.Contains('\'')) {
-			scoutName = scoutName.Replace("'", "''");
-		}
-
-		SqliteCommand command = new() {
-			CommandText =
-				$"""
-				 INSERT OR REPLACE INTO "{nameof(Tables.Scout)}" (ROWID, "{Tables.Scout.Name}")
-				 VALUES (1, '{scoutName}');
-				 """,
-			Connection = Connection
-		};
-
-		try {
-			int result = await command.ExecuteNonQueryAsync();
-			return result == 1;
-
-		} catch {
-			return false;
-		}
 	}
 
 }

@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Threading.Tasks;
+using Database.Results.Scout;
+using Database.Sqlite;
 using Domain.Data;
 using Domain.GameSpecification;
-using Database;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Optional;
 using UtilitiesLibrary.Results;
-using Database.Sqlite;
-using Domain.Dtos;
 
 namespace QuickTestingApplication;
 
@@ -25,52 +24,15 @@ public class Program {
 			throw new();
 		}
 
-		bool success = await dataStore.SetLastScout("test");
+		SetLastScoutResult success = await dataStore.SetLastScout("test");
 
-		if (!success) {
+		if (success.IsT1) {
 			throw new();
 		}
 
-		string? lastScout = await dataStore.GetLastScout();
+		GetLastScoutResult? lastScout = await dataStore.GetLastScout();
 
 		if (lastScout is null) {
-			throw new();
-		}
-
-		success = (await dataStore.AddNewMatchData(new() {
-			MatchData = SampleData[0],
-			DeviceId = "testDeviceId",
-			EditBasedOn = null
-		})).IsT0;
-
-		if (!success) {
-			throw new();
-		}
-
-		success = (await dataStore.AddNewMatchData(new() {
-			MatchData = SampleData[0],
-			DeviceId = "testDeviceId",
-			EditBasedOn = ("testDeviceId", 1)
-		})).IsT0;
-
-		if (!success) {
-			throw new();
-		}
-
-		GetMatchDataResult matchData = await dataStore.GetMatchData();
-
-		if (!matchData.IsT0) {
-			throw new();
-		}
-
-		foreach (ImportMatchDataDto matchDataDto in matchData.AsT0) {
-
-			Console.WriteLine(matchDataDto);
-		}
-
-		//success = await dataStore.DeleteMatchData(matchData[0]);
-
-		if (!success) {
 			throw new();
 		}
 	}

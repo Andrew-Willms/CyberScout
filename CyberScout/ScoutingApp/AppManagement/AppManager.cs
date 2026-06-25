@@ -1,16 +1,16 @@
 ﻿using System;
 using System.ComponentModel;
-using System.Linq;
 using System.Threading.Tasks;
+using Comms.Dtos;
+using Database;
+using Database.Results.MatchData;
 using Domain.Data;
 using Domain.DataCollectors;
 using Domain.GameSpecification;
-using Database;
 using Microsoft.Maui.ApplicationModel;
 using OneOf;
 using UtilitiesLibrary.Optional;
 using Event = UtilitiesLibrary.SimpleEvent.Event;
-using Domain.Dtos;
 
 namespace ScoutingApp.AppManagement;
 
@@ -212,7 +212,7 @@ public class AppManager : INotifyPropertyChanged {
 		StartNewMatch();
 	}
 
-	public void DiscardAndStartEditingMatch(ImportMatchDataDto importMatchData) {
+	public void DiscardAndStartEditingMatch(MatchDataDto importMatchData) {
 
 		// todo fix this, the check is broken and returns false when it should return true I think
 		//if (!matchData.MatchData.GameSpecification.Equals(GameSpecification)) {

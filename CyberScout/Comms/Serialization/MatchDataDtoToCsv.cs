@@ -25,7 +25,7 @@ public static class MatchDataDtoToCsv {
 		nameof(MatchDataDto.GameDeviceId) + ',' +
 		nameof(MatchDataDto.GameId) + ',' +
 		nameof(MatchDataDto.EventDeviceId) + ',' +
-		nameof(MatchDataDto.EventId) + ',' +
+		nameof(MatchDataDto.EventMetaDataId) + ',' +
 		nameof(MatchData.ScoutName) + ',' +
 		nameof(MatchData.EventCode) + ',' +
 		nameof(MatchData.Match.MatchNumber) + ',' +
@@ -70,7 +70,7 @@ public static class MatchDataDtoToCsv {
 		stringBuilder.Append(',');
 		stringBuilder.Append(importMatchData.EventDeviceId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.EventId);
+		stringBuilder.Append(importMatchData.EventMetaDataId);
 		stringBuilder.Append(',');
 		stringBuilder.Append(importMatchData.MatchData.ScoutName.ToCsvFriendly());
 		stringBuilder.Append(',');

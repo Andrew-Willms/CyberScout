@@ -1,6 +1,6 @@
 ﻿using System.IO;
+using Comms.Serialization;
 using Domain.GameSpecification;
-using Domain.Serialization;
 using GameMakerWpf.Domain.Editors;
 using Microsoft.Win32;
 using Newtonsoft.Json;

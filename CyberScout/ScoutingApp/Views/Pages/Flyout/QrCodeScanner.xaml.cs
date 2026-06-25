@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Domain.Serialization;
+using Comms.Dtos;
+using Comms.Serialization;
 using Database;
+using Database.Results.MatchData;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using ScoutingApp.AppManagement;
 using ZXing.Net.Maui;
-using Domain.Dtos;
 
 namespace ScoutingApp.Views.Pages.Flyout;
 
@@ -73,7 +74,7 @@ public partial class QrCodeScanner : ContentPage {
 			return;
 		}
 
-		ImportMatchDataDto? matchDataDto = MatchDataDtoToCsv.Deserialize(qrCodeString, AppManager.GameSpecification);
+		MatchDataDto? matchDataDto = MatchDataDtoToCsv.Deserialize(qrCodeString, AppManager.GameSpecification);
 
 		if (matchDataDto is null) {
 			ErrorPresenter.DisplayError("Invalid QR Code", "The QR code data could not be converted into a match.");
@@ -153,10 +154,10 @@ public partial class QrCodeScanner : ContentPage {
 				return;
 			}
 
-			List<ImportMatchDataDto> matchData = matchDataResult.AsT0;
+			List<MatchDataDto> matchData = matchDataResult.AsT0;
 
 			StringBuilder stringBuilder = new(MatchDataToCsv.GetCsvHeaders(AppManager.GameSpecification));
-			foreach (ImportMatchDataDto matchDataDto in matchData) {
+			foreach (MatchDataDto matchDataDto in matchData) {
 				stringBuilder.Append('\n');
 				stringBuilder.Append(MatchDataToCsv.Serialize(matchDataDto.MatchData));
 			}

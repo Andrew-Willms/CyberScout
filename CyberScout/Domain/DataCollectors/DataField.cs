@@ -206,7 +206,7 @@ public class SelectionDataField : DataField {
 
 	public override List<string> Errors {
 		get {
-			if (Specification.RequiresValue && (Value == Optional<string>.NoValue || Value.Value == string.Empty)) {
+			if (Specification.RequiresValue && (Value == Optional.NoValue || Value.Value == string.Empty)) {
 				return [ $"The data field \"{Name}\" requires a value." ];
 			}
 

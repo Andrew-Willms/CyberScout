@@ -16,7 +16,7 @@ public record NewMatchDataDto {
 
 	public required string EventDeviceId { get; init; }
 
-	public required long EventId { get; init; }
+	public required long EventMetaDataId { get; init; }
 
 
 
