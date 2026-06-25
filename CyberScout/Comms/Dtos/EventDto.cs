@@ -1,5 +1,5 @@
 ﻿using System;
-using Domain.Data;
+using Domain.GameSpecification;
 
 namespace Comms.Dtos;
 
@@ -22,6 +22,6 @@ public record EventDto {
 
 	public required EventDataSources Source { get; init; }
 
-	public required Event Event { get; init; }
+	public required EventSchedule Event { get; init; }
 
 }

@@ -9,6 +9,14 @@ namespace Database;
 
 
 
+public interface IDataStoreCreator {
+
+	public Task<IDataStore?> Create(string settings); // TODO make this Result<> instead of nullable
+
+}
+
+
+
 public interface IDataStore {
 
 	public Task<GetGameSpecsResult> GetGameSpecs();
@@ -30,8 +38,6 @@ public interface IDataStore {
 	public Task<DeleteEventResult> DeleteEvent();
 
 
-
-	//public Task<> GetMatchDataResult
 
 	public Task<GetMatchDataFromGameResult> GetMatchDataFromGame(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true, bool ignorePatchVersion = true);
 
@@ -58,11 +64,5 @@ public interface IDataStore {
 
 
 	// TODO: consider storing errors and sharing them across devices 
-
-}
-
-public interface IDataStoreCreator {
-
-	public Task<IDataStore?> Create(string settings); // TODO make this Result<> instead of nullable
 
 }

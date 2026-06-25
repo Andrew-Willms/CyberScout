@@ -1319,7 +1319,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		GameSpec gameSpec = (await GetGameSpecs()).FirstOrDefault() ?? throw new UnreachableException(); // todo
 
-		List<ImportMatchDataDto> allMatchDtos = [];
+		List<MatchDataDto> allMatchDtos = [];
 		while (reader.Read()) {
 
 			string deviceId = reader.GetString(0);
@@ -1370,9 +1370,9 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		// Identify all the match data that are original (not edits of existing match data).
 		// Create an "Edit Chain" for each original match (starting with the original match itself).
-		List<List<ImportMatchDataDto>> editChains = allMatchDtos
+		List<List<MatchDataDto>> editChains = allMatchDtos
 			.Where(x => x.EditBasedOn is null)
-			.Select(x => new List<ImportMatchDataDto> { x })
+			.Select(x => new List<MatchDataDto> { x })
 			.ToList();
 
 		// Iterate over all match data that is an edit of prior match data.
@@ -1382,13 +1382,13 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		// A first degree edit is an edit of the original data, a second degree edit is an edit of a first degree edit, etc.
 		// This implementation also doesn't work with things like edit trees.
 
-		List<ImportMatchDataDto> unlinkedEditData = allMatchDtos.Where(x => x.EditBasedOn is not null).ToList();
+		List<MatchDataDto> unlinkedEditData = allMatchDtos.Where(x => x.EditBasedOn is not null).ToList();
 		int lastCountOfUnlinkedEditData = unlinkedEditData.Count;
 		while (true) {
 
-			foreach (ImportMatchDataDto editData in unlinkedEditData) {
+			foreach (MatchDataDto editData in unlinkedEditData) {
 
-				List<ImportMatchDataDto>? activeEditChain = editChains.FirstOrDefault(x =>
+				List<MatchDataDto>? activeEditChain = editChains.FirstOrDefault(x =>
 					x.Count > 0 && // should be guaranteed
 					(x.Last().DeviceId, x.Last().RecordId) == editData.EditBasedOn);
 

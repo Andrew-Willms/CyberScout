@@ -121,16 +121,6 @@ public static class MatchDataToCsv {
 					stringBuilder.Append(value);
 					break;
 				}
-				case (MultiIntegerDataFieldSpec, int value): {
-					stringBuilder.Append(',');
-					stringBuilder.Append(value);
-					break;
-				}
-				// TODO: Optional doesn't match the Optional<T> type
-				case (SelectionDataFieldSpec, Optional): {
-					stringBuilder.Append(',');
-					break;
-				}
 				case (SelectionDataFieldSpec selectionDataFieldSpec, Optional<string> optional): {
 
 					if (!optional.HasValue) {
@@ -254,20 +244,6 @@ public static class MatchDataToCsv {
 					break;
 
 				case IntegerDataFieldSpec dataFieldSpec: {
-
-					if (int.TryParse(value, out int result)) {
-						dataFieldValues.Add(result);
-						break;
-					}
-
-					dataFieldErrors.Add(new() {
-						DataField = dataFieldSpec,
-						Text = value
-					});
-					break;
-				}
-
-				case MultiIntegerDataFieldSpec dataFieldSpec: {
 
 					if (int.TryParse(value, out int result)) {
 						dataFieldValues.Add(result);

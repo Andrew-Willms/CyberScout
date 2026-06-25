@@ -108,6 +108,7 @@ public class GameSpec : IEquatable<GameSpec> {
 
 
 
+	// TODO consider rapping collections with value comparison wrappers and make this a record
 	public bool Equals(GameSpec? other) {
 
 		if (other is null) {

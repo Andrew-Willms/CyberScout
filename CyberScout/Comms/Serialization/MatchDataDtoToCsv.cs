@@ -214,8 +214,7 @@ public static class MatchDataDtoToCsv {
 					dataFieldValues.Add(value);
 					break;
 
-				case IntegerDataFieldSpec:
-				case MultiIntegerDataFieldSpec: {
+				case IntegerDataFieldSpec: {
 					if (!int.TryParse(value, out int result)) {
 						return null;
 					}

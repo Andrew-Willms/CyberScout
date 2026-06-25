@@ -13,8 +13,7 @@ namespace Domain.GameSpecification;
 
 public class EventScheduleCreator {
 
-	public ReadOnlyList<OneOf<EventSchedule, StartAfterEndError, WrongMatchFormat>> Errors { get; private set; } =
-		new List<OneOf<EventSchedule, StartAfterEndError, WrongMatchFormat>>().ToReadOnly();
+	public ReadOnlyList<EventScheduleCreationErrors> Errors { get; private set; } = new List<EventScheduleCreationErrors>().ToReadOnly();
 
 	public MatchFormat? MatchFormat { get; set; }
 
@@ -49,7 +48,7 @@ public class EventSchedule {
 	public required ReadOnlyList<ScheduledMatch> Matches { get; init; }
 	// TODO add support for elim matches of various formats
 
-	public static OneOf<EventSchedule, StartAfterEndError, WrongMatchFormat> Create(
+	public static EventScheduleCreationErrors Create(
 		MatchFormat matchFormat,
 		string name,
 		string eventCode,
@@ -89,22 +88,6 @@ public class EventSchedule {
 
 }
 
-public class StartAfterEndError : DomainError {
-
-	public required DateTime StartDateTime { get; init; }
-
-	public required DateTime EndDateTime { get; init; }
-}
-
-public class WrongMatchFormat : DomainError {
-
-	public required MatchFormat RequiredMatchFormat { get; init; }
-
-	public required ScheduledMatch ViolatingMatch { get; init; }
-}
-
-
-
 public class ScheduledMatch {
 
 	public required ReadOnlyList<ReadOnlyList<(uint team, bool isSurrogate)>> Alliances { get; init; }
@@ -136,6 +119,29 @@ public class ScheduledMatch {
 
 }
 
+
+
+
+[GenerateOneOf]
+public partial class EventScheduleCreationErrors : OneOfBase<
+	EventSchedule,
+	StartAfterEndError,
+	WrongMatchFormat
+>;
+
+public class StartAfterEndError : DomainError {
+
+	public required DateTime StartDateTime { get; init; }
+
+	public required DateTime EndDateTime { get; init; }
+}
+
+public class WrongMatchFormat : DomainError {
+
+	public required MatchFormat RequiredMatchFormat { get; init; }
+
+	public required ScheduledMatch ViolatingMatch { get; init; }
+}
 
 public class DuplicateTeamInMatch : DomainError {
 

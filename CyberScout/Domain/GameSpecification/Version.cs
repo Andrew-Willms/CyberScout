@@ -4,17 +4,13 @@ namespace Domain.GameSpecification;
 
 
 
-// Consider making this a struct
-public class Version {
-
-	public Version() { }
+public record struct Version {
 
 	[SetsRequiredMembers]
-	public Version(uint major, uint minor, uint patch, string name = "", string description = "") {
+	public Version(uint major, uint minor, uint patch, string description = "") {
 		MajorNumber = major;
 		MinorNumber = minor;
 		PatchNumber = patch;
-		Name = name;
 		Description = description;
 	}
 
@@ -24,12 +20,6 @@ public class Version {
 
 	public required uint PatchNumber { get; init; }
 
-	public string Name { get; init; } = "";
-
 	public string Description { get; init; } = "";
-
-	public override string ToString() {
-		return $"{MajorNumber}.{MinorNumber}.{PatchNumber}";
-	}
 
 }

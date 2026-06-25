@@ -146,45 +146,6 @@ public class IntegerDataField : DataField {
 
 }
 
-public class MultiIntegerDataField : DataField {
-
-	public new MultiIntegerDataFieldSpec Specification { get; }
-
-	public int Value {
-		get;
-		set {
-			field = value;
-			OnValueChange.Invoke();
-			OnPropertyChanged(nameof(Value));
-			OnPropertyChanged(nameof(Errors));
-		}
-	}
-
-	public override object BaseValue => Value;
-
-	public override List<string> Errors {
-		get {
-			List<string> errors = [];
-
-			if (Value > Specification.MaxValue) {
-				errors.Add($"The data field \"{Name}\" ist set to {Value} which is greater than it's maximum value of {Specification.MaxValue}.");
-			}
-
-			if (Value < Specification.MinValue) {
-				errors.Add($"The data field \"{Name}\" ist set to {Value} which is less than it's minimum value of {Specification.MinValue}.");
-			}
-
-			return errors;
-		}
-	}
-
-	public MultiIntegerDataField(MultiIntegerDataFieldSpec specification) : base(specification) {
-		Value = specification.InitialValue;
-		Specification = specification;
-	}
-
-}
-
 
 
 public class SelectionDataField : DataField {

@@ -8,13 +8,7 @@ namespace Domain.GameSpecification;
 
 
 
-public enum DataFieldType {
-	Boolean,
-	Text,
-	Integer,
-	Selection
-}
-
+// TODO consider making this a closed class hierarchy
 public abstract record DataFieldSpec {
 
 	public required string Name { get; init; }
@@ -60,21 +54,6 @@ public record IntegerDataFieldSpec : DataFieldSpec {
 	}
 
 }
-
-public record MultiIntegerDataFieldSpec : DataFieldSpec {
-
-	public required int InitialValue { get; init; }
-
-	public required int MinValue { get; init; } = int.MinValue;
-
-	public required int MaxValue { get; init; } = int.MaxValue;
-
-	public override DataField ToDataField() {
-		return new MultiIntegerDataField(this);
-	}
-
-}
-
 
 public record SelectionDataFieldSpec : DataFieldSpec, IEquatable<SelectionDataFieldSpec> {
 

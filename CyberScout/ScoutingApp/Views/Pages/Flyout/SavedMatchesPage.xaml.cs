@@ -4,13 +4,12 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
-using Domain.Serialization;
-using Database;
+using Comms.Dtos;
+using Comms.Serialization;
 using Microsoft.Maui;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using ScoutingApp.AppManagement;
-using Domain.Dtos;
 
 namespace ScoutingApp.Views.Pages.Flyout; 
 
@@ -40,7 +39,7 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 		}
 	}
 
-	public ObservableCollection<ImportMatchDataDto> SavedMatches { get; } = [];
+	public ObservableCollection<MatchDataDto> SavedMatches { get; } = [];
 
 	public bool AnyMatches => SavedMatches.Any();
 
@@ -76,7 +75,7 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 
 		getMatchDataResult.Switch(
 			matchData => {
-				foreach (ImportMatchDataDto match in matchData) {
+				foreach (MatchDataDto match in matchData) {
 					SavedMatches.Add(match);
 				}
 			},
@@ -109,7 +108,7 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 		MainThread.BeginInvokeOnMainThread(() => { IsRefreshing = false; });
 	}
 
-	private async Task<bool> DeleteMatch(ImportMatchDataDto importMatchData) {
+	private async Task<bool> DeleteMatch(MatchDataDto importMatchData) {
 
 		return await AppManager.DataStore.DeleteMatchData(importMatchData);
 	}
@@ -154,7 +153,7 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 
 		try {
 			Button button = sender as Button ?? throw new ArgumentException("sender not valid");
-			ImportMatchDataDto importMatchData = button.BindingContext as ImportMatchDataDto ??
+			MatchDataDto importMatchData = button.BindingContext as MatchDataDto ??
 			                         throw new ArgumentException("sender not valid");
 
 			Dictionary<string, object> parameters = new() {
