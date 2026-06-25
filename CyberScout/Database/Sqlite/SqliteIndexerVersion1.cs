@@ -79,7 +79,7 @@ public class SqliteIndexerVersion1 {
 		throw new NotImplementedException();
 	}
 
-	public async Task<BulkSetRecordMetaData?> SetMatchIndexMetaData(GameDto gameDto, MatchIndexMetaData metaData) {
+	public async Task<BulkSetRecordMetaData> SetMatchIndexMetaData(GameDto gameDto, MatchIndexMetaData metaData) {
 		throw new NotImplementedException();
 	}
 

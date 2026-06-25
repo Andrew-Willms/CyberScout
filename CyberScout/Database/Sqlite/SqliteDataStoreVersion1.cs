@@ -13,6 +13,7 @@ using Microsoft.Data.Sqlite;
 using SqliteUtilities;
 using UtilitiesLibrary.Collections;
 using Willmsy.AsyncTryResult;
+using static Database.Sqlite.Tables;
 
 namespace Database.Sqlite;
 
@@ -1010,8 +1011,8 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		// -------- Open Transaction --------
 		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
-		if (await openTransaction.ExecuteNonQueryAndExpect(0) is DataStoreError openTransactionError) {
-			return openTransactionError;
+		if (await openTransaction.ExecuteNonQueryAndExpect(0) is ExecuteNonQueryAndExpectError openTransactionError) {
+			return new BeginTransactionError(openTransactionError);
 		}
 
 		// -------- Delete Match Data --------
@@ -1026,20 +1027,22 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		deleteMatchData.Parameters.Add(new("@GameDeviceId", SqliteType.Text) { Value = gameDto.DeviceId });
 		deleteMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = gameDto.GameId });
 
-		if (await deleteMatchData.ExecuteNonQueryAndExpect(1) is DataStoreError addMatchDataError) {
-			return addMatchDataError;
+		if (await deleteMatchData.ExecuteNonQueryUnchecked() is ExecuteNonQueryUncheckedError deleteMatchDataError) {
+			return await RollbackError<BulkDeleteDataError>.TryRollback(deleteMatchDataError, Connection);
 		}
 
 		// -------- Update Record Index Table --------
 		MatchIndexMetaData metaData = MatchIndexMetaData.CreateNoneMatch();
-		if (await Indexer.SetMatchIndexMetaData(gameDto, metaData) is DataStoreError updateIndexError) {
-			return updateIndexError;
+
+		BulkSetRecordMetaData updateIndexResult = await Indexer.SetMatchIndexMetaData(gameDto, metaData);
+		if (updateIndexResult.IsFailure) {
+			return await RollbackError<BulkSetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
 		SqliteCommand commitTransaction = new("COMMIT;", Connection);
-		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is DataStoreError commitError) {
-			return await RollbackError.TryRollback(commitError, Connection);
+		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError commitError) {
+			return await RollbackError<CommitTransactionError>.TryRollback(commitError, Connection);
 		}
 
 		return new Success();
