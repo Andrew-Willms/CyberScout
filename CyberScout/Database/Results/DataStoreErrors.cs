@@ -1,31 +1,13 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using Microsoft.Data.Sqlite;
+using OneOf;
+using SqliteUtilities;
 
 namespace Database.Results;
 
 
 
-public abstract record DataStoreError {
-
-	public static DataStoreError FromException(
-		Exception exception,
-		SqliteCommand command,
-		[CallerFilePath] string callerFilePath = "",
-		[CallerMemberName] string callerMemberName = "",
-		[CallerArgumentExpression(nameof(command))]
-			string? commandName = null) {
-
-	return exception is SqliteException sqliteException
-		? new SqliteExceptionError(sqliteException, command, callerFilePath, callerMemberName, commandName)
-		: new NonSqliteExceptionError(exception, command, callerFilePath, callerMemberName, commandName);
-	}
-
-}
-
-
-
-public record SqliteExceptionError : DataStoreError {
+public record SqliteExceptionError {
 
 	public required int SqliteErrorCode { get; init; }
 
@@ -35,35 +17,18 @@ public record SqliteExceptionError : DataStoreError {
 
 	public required string CommandText { get; init; }
 
-	public required string CallerFilePath { get; init; }
-
-	public required string CallerMemberName { get; init; }
-
-	public required string? CommandName { get; init; }
-
 	[SetsRequiredMembers]
-	public SqliteExceptionError(
-		SqliteException exception,
-		SqliteCommand command,
-		[CallerFilePath] string callerFilePath = "",
-		[CallerMemberName] string callerMemberName = "",
-		[CallerArgumentExpression(nameof(command))] string? commandName = null) {
+	public SqliteExceptionError(SqliteException exception, SqliteCommand command) {
 
 		SqliteErrorCode = exception.SqliteErrorCode;
 		SqliteExtendedErrorCode = exception.SqliteExtendedErrorCode;
 		Message = exception.Message;
 		CommandText = command.CommandText;
-
-		CallerFilePath = callerFilePath;
-		CallerMemberName = callerMemberName;
-		CommandName = commandName;
 	}
 
 }
 
-
-
-public record NonSqliteExceptionError : DataStoreError {
+public record NonSqliteExceptionError {
 
 	public required string? ExceptionType { get; init; }
 
@@ -73,101 +38,86 @@ public record NonSqliteExceptionError : DataStoreError {
 
 	public required string CommandText { get; init; }
 
-	public required string CallerFilePath { get; init; }
-
-	public required string CallerMemberName { get; init; }
-
-	public required string? CommandName { get; init; }
-
 	[SetsRequiredMembers]
-	public NonSqliteExceptionError(
-		Exception exception,
-		SqliteCommand command,
-		[CallerFilePath] string callerFilePath = "",
-		[CallerMemberName] string callerMemberName = "",
-		[CallerArgumentExpression(nameof(command))] string? commandName = null) {
+	public NonSqliteExceptionError(Exception exception, SqliteCommand command) {
 
 		ExceptionType = exception.GetType().FullName;
 		Message = exception.Message;
 		StackTrack = exception.StackTrace;
 		CommandText = command.CommandText;
+	}
 
-		CallerFilePath = callerFilePath;
-		CallerMemberName = callerMemberName;
-		CommandName = commandName;
+}
+
+[GenerateOneOf]
+public partial class ExceptionError : OneOfBase<SqliteExceptionError, NonSqliteExceptionError> {
+
+	public static ExceptionError FromException(Exception exception, SqliteCommand command) {
+
+		if (exception is SqliteException sqliteException) {
+			return new SqliteExceptionError(sqliteException, command);
+		}
+
+		return new NonSqliteExceptionError(exception, command);
 	}
 
 }
 
 
 
-public record TableOverflowError : DataStoreError {
+public record BeginTransactionError(ExecuteNonQueryAndExpectError Error);
 
-	public required string CallerFilePath { get; init; }
+public record GetIdError(IntegerScalarError Error) {
 
-	public required string CallerMemberName { get; init; }
+	public static implicit operator GetIdError(IntegerScalarError error) {
+		return new(error);
+	}
 
-	[SetsRequiredMembers]
-	public TableOverflowError(
-		[CallerFilePath] string callerFilePath = "",
-		[CallerMemberName] string callerMemberName = "") {
+}
 
-		CallerFilePath = callerFilePath;
-		CallerMemberName = callerMemberName;
+public record TableOverflowError;
+
+public record InsertDataResult(ExecuteNonQueryAndExpectError Error) {
+
+	public static implicit operator InsertDataResult(ExecuteNonQueryAndExpectError error) {
+		return new(error);
+	}
+
+}
+
+public record DeleteDataResult(ExecuteNonQueryAndExpectError Error) {
+
+	public static implicit operator DeleteDataResult(ExecuteNonQueryAndExpectError error) {
+		return new(error);
+	}
+
+}
+
+public record UpdateSequenceError(ExecuteNonQueryAndExpectError Error) {
+
+	public static implicit operator UpdateSequenceError(ExecuteNonQueryAndExpectError error) {
+		return new(error);
+	}
+
+}
+
+public record CommitTransactionError(ExecuteNonQueryAndExpectError Error) {
+
+	public static implicit operator CommitTransactionError(ExecuteNonQueryAndExpectError error) {
+		return new(error);
 	}
 
 }
 
 
 
-public record WrongNumberOfModificationsError : DataStoreError {
-
-	public required string CommandText { get; init; }
-
-	public required int ExpectedModifications { get; init; }
-
-	public required int ActualModifications { get; init; }
-
-	public required string CallerFilePath { get; init; }
-
-	public required string CallerMemberName { get; init; }
-
-	public required string? CommandName { get; init; }
-}
 
 
+public record RollbackError<TError> {
 
-public record ParseError : DataStoreError {
+	public required TError InitialError { get; init; }
 
-	public required string CommandText { get; init; }
-
-	public required string? ExpectedType { get; init; }
-
-	public required string? ActualType { get; init; }
-
-	public required string? StringValue { get; init; }
-
-	public required string CallerFilePath { get; init; }
-
-	public required string CallerMemberName { get; init; }
-
-	public required string? CommandName { get; init; }
-}
-
-
-
-public record IndexUpdateError : DataStoreError {
-
-	public required DataStoreError Error { get; init; }
-}
-
-
-
-public record RollbackError : DataStoreError {
-
-	public required DataStoreError InitialError { get; init; }
-
-	public required DataStoreError SecondError { get; init; }
+	public required ExceptionError? SecondError { get; init; }
 
 	private RollbackError() { }
 
@@ -176,28 +126,25 @@ public record RollbackError : DataStoreError {
 	/// </summary>
 	/// <param name="firstError"> The <see cref="DataStoreError"/> that occured, creating the desire to roll back. </param>
 	/// <param name="connection"> The <see cref="SqliteConnection"/> to be used to execute the rollback command. </param>
-	/// <param name="callerFilePath"> The file path of the caller, supplied by <see cref="CallerFilePathAttribute"/>. </param>
-	/// <param name="callerMemberName"> The name of the caller, supplied by <see cref="CallerMemberNameAttribute"/>. </param>
 	/// <returns>
 	/// A <see cref="DataStoreError"/> representing the original failure if the rollback succeeds.<br/>
 	/// Otherwise, a <see cref="RollbackError"/> containing information about both the original failure and the rollback failure.
 	/// </returns>
-	public static async Task<DataStoreError> TryRollbackAndReturn(
-		DataStoreError firstError,
-		SqliteConnection connection,
-		[CallerFilePath] string callerFilePath = "",
-		[CallerMemberName] string callerMemberName = "") {
+	public static async Task<RollbackError<TError>> TryRollback(TError firstError, SqliteConnection connection) {
 
-		SqliteCommand rollback = new("ROLLBACK;", connection);
+		SqliteCommand rollbackCommand = new("ROLLBACK;", connection);
 
 		try {
-			await rollback.ExecuteNonQueryAsync();
-			return firstError;
+			await rollbackCommand.ExecuteNonQueryAsync();
+			return new() {
+				InitialError = firstError,
+				SecondError = null
+			};
 
 		} catch (Exception exception) {
-			return new RollbackError {
+			return new() {
 				InitialError = firstError,
-				SecondError = FromException(exception, rollback, callerFilePath, callerMemberName)
+				SecondError = ExceptionError.FromException(exception, rollbackCommand)
 			};
 		}
 	}
@@ -206,4 +153,4 @@ public record RollbackError : DataStoreError {
 
 
 
-public record RangeOperationError : DataStoreError;
+public record RangeOperationError;

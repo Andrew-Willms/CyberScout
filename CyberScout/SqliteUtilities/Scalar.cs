@@ -7,7 +7,9 @@ namespace SqliteUtilities;
 
 
 public record IntegerScalarResult : AsyncTryValueResult<long, IntegerScalarError> {
+
 	public IntegerScalarResult(long value) : base(value) { }
+
 	public IntegerScalarResult(IntegerScalarError error) : base(error) { }
 
 	public static implicit operator IntegerScalarResult(long value) {
@@ -45,7 +47,9 @@ public partial class IntegerScalarError : OneOfBase<
 >;
 
 public record NullableIntegerScalarResult : AsyncTryValueResult<OneOf<long, None>, NullableIntegerScalarError> {
+
 	public NullableIntegerScalarResult(OneOf<long, None> value) : base(value) { }
+
 	public NullableIntegerScalarResult(NullableIntegerScalarError error) : base(error) { }
 
 	public static implicit operator NullableIntegerScalarResult(long value) {
@@ -83,7 +87,9 @@ public partial class NullableIntegerScalarError : OneOfBase<
 >;
 
 public record RealScalarResult : AsyncTryValueResult<double, RealScalarError> {
+
 	public RealScalarResult(double value) : base(value) { }
+
 	public RealScalarResult(RealScalarError error) : base(error) { }
 
 	public static implicit operator RealScalarResult(double value) {
@@ -122,7 +128,9 @@ public partial class RealScalarError : OneOfBase<
 >;
 
 public record NullableRealScalarResult : AsyncTryValueResult<OneOf<double, None>, NullableRealScalarError> {
+
 	public NullableRealScalarResult(OneOf<double, None> value) : base(value) { }
+
 	public NullableRealScalarResult(NullableRealScalarError error) : base(error) { }
 
 	public static implicit operator NullableRealScalarResult(double value) {
@@ -160,7 +168,9 @@ public partial class NullableRealScalarError : OneOfBase<
 >;
 
 public record TextScalarResult : AsyncTryResult<string, TextScalarError> {
+
 	public TextScalarResult(string value) : base(value) { }
+
 	public TextScalarResult(TextScalarError error) : base(error) { }
 
 	public static implicit operator TextScalarResult(string value) {
@@ -199,7 +209,9 @@ public partial class TextScalarError : OneOfBase<
 >;
 
 public record NullableTextScalarResult : AsyncTryValueResult<OneOf<string, None>, NullableTextScalarError> {
+
 	public NullableTextScalarResult(OneOf<string, None> value) : base(value) { }
+
 	public NullableTextScalarResult(NullableTextScalarError error) : base(error) { }
 
 	public static implicit operator NullableTextScalarResult(string value) {
@@ -237,7 +249,9 @@ public partial class NullableTextScalarError : OneOfBase<
 >;
 
 public record BlobScalarResult : AsyncTryResult<byte[], BlobScalarError> {
+
 	public BlobScalarResult(byte[] value) : base(value) { }
+
 	public BlobScalarResult(BlobScalarError error) : base(error) { }
 
 	public static implicit operator BlobScalarResult(byte[] value) {
@@ -276,7 +290,9 @@ public partial class BlobScalarError : OneOfBase<
 >;
 
 public record NullableBlobScalarResult : AsyncTryValueResult<OneOf<byte[], None>, NullableBlobScalarError> {
+
 	public NullableBlobScalarResult(OneOf<byte[], None> value) : base(value) { }
+
 	public NullableBlobScalarResult(NullableBlobScalarError error) : base(error) { }
 
 	public static implicit operator NullableBlobScalarResult(byte[] value) {
