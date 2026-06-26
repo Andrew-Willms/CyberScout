@@ -673,7 +673,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 
 
-	public Task<GetMatchDataByGameResult> GetMatchDataFromGame(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true, bool ignorePatchVersion = true) {
+	public Task<GetMatchDataFromGameResult> GetMatchDataFromGame(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true, bool ignorePatchVersion = true) {
 		throw new NotImplementedException();
 	}
 
@@ -1242,7 +1242,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		});
 	}
 
-	public async Task<GetMatchDataByGameResult> Old_GetMatchData() {
+	public async Task<GetMatchDataFromGameResult> Old_GetMatchData() {
 
 		SqliteCommand getMatchDataCommand = new(
 			$"SELECT * FROM \"{nameof(Tables.MatchData)}\";",
