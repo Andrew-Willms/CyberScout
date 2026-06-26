@@ -115,8 +115,6 @@ public class SqliteIndexerVersion1 {
 			return deleteRecordRangeError;
 		}
 
-
-
 		return Success.Instance;
 	}
 
