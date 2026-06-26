@@ -1,13 +1,10 @@
 ﻿using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using Comms.Dtos;
 using Database.Results;
 using Microsoft.Data.Sqlite;
-using OneOf;
 using SqliteUtilities;
-using Willmsy.AsyncTryResult;
 
-namespace Database.Sqlite;
+namespace Database.Sqlite.Indexer;
 
 
 
@@ -75,29 +72,29 @@ public class SqliteIndexerVersion1 {
 
 
 
-	public async Task<BulkSetRecordMetaData> SetMatchIndexMetaData(EventDto eventDto, MatchIndexMetaData metaData) {
+	public async Task<BulkSetRecordMetaDataResult> SetMatchIndexMetaData(EventDto eventDto, MatchIndexMetaData metaData) {
 		throw new NotImplementedException();
 	}
 
-	public async Task<BulkSetRecordMetaData> SetMatchIndexMetaData(GameDto gameDto, MatchIndexMetaData metaData) {
+	public async Task<BulkSetRecordMetaDataResult> SetMatchIndexMetaData(GameDto gameDto, MatchIndexMetaData metaData) {
 		throw new NotImplementedException();
 	}
 
 
 
-	public async Task<ResetIndexError> ResetGameIndex() {
+	public async Task<ResetIndexResult> ResetGameIndex() {
 		return await ResetIndex(RecordType.Game);
 	}
 
-	public async Task<ResetIndexError> ResetEventIndex() {
+	public async Task<ResetIndexResult> ResetEventIndex() {
 		return await ResetIndex(RecordType.Event);
 	}
 
-	public async Task<ResetIndexError> ResetMatchIndex() {
+	public async Task<ResetIndexResult> ResetMatchIndex() {
 		return await ResetIndex(RecordType.Match);
 	}
 
-	private async Task<ResetIndexError> ResetIndex(RecordType type) {
+	private async Task<ResetIndexResult> ResetIndex(RecordType type) {
 
 		string tableName = type switch {
 			RecordType.Game => nameof(Tables.GameIndex),
@@ -111,6 +108,8 @@ public class SqliteIndexerVersion1 {
 		if (await deleteRecordRange.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError deleteRecordRangeError) {
 			return await RollbackError<ExecuteNonQueryAndExpectError>.TryRollback(deleteRecordRangeError, Connection);
 		}
+
+
 
 		return Success.Instance;
 	}
@@ -134,6 +133,10 @@ public class SqliteIndexerVersion1 {
 		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
 
 		throw new NotImplementedException();
+	}
+
+	private async Task<GetRangeResult> GetRanges(EventDto eventDto) {
+
 	}
 
 	private async Task<GetSuperRangeResult> GetSuperRangeAround(string deviceId, long recordId, RecordType type) {
@@ -313,244 +316,3 @@ public class SqliteIndexerVersion1 {
 	}
 
 }
-
-
-
-
-
-public record SetRecordMetaDataResult : AsyncTryValueResult<Success, SetRecordMetaDataError> {
-
-	public SetRecordMetaDataResult(Success value) : base(value) { }
-
-	public SetRecordMetaDataResult(SetRecordMetaDataError error) : base(error) { }
-
-	public static implicit operator SetRecordMetaDataResult(Success success) {
-		return new(success);
-	}
-
-	public static implicit operator SetRecordMetaDataResult(SetRecordMetaDataError error) {
-		return new(error);
-	}
-
-	public static implicit operator SetRecordMetaDataResult(GetSuperRangeError error) {
-		return new(error);
-	}
-
-	public static implicit operator SetRecordMetaDataResult(RangeOperationError error) {
-		return new(error);
-	}
-
-	public static implicit operator SetRecordMetaDataResult(DeleteRangeFromIndexError error) {
-		return new(error);
-	}
-
-	public static implicit operator SetRecordMetaDataResult(AddRangeToIndexError error) {
-		return new(error);
-	}
-
-}
-
-[GenerateOneOf]
-public partial class SetRecordMetaDataError : OneOfBase<
-	GetSuperRangeError,
-	RangeOperationError,
-	DeleteRangeFromIndexError,
-	AddRangeToIndexError
->;
-
-
-public record BulkSetRecordMetaData : AsyncTryValueResult<Success, BulkSetRecordMetaDataError> {
-
-	public BulkSetRecordMetaData(Success value) : base(value) { }
-
-	public BulkSetRecordMetaData(BulkSetRecordMetaDataError error) : base(error) { }
-
-}
-
-public class BulkSetRecordMetaDataError;
-
-
-
-public record ResetIndexError : AsyncTryValueResult<Success, RollbackError<ExecuteNonQueryAndExpectError>> {
-
-	public ResetIndexError(Success value) : base(value) { }
-
-	public ResetIndexError(RollbackError<ExecuteNonQueryAndExpectError> error) : base(error) { }
-
-	public static implicit operator ResetIndexError(Success success) {
-		return new(success);
-	}
-
-	public static implicit operator ResetIndexError(RollbackError<ExecuteNonQueryAndExpectError> error) {
-		return new(error);
-	}
-
-}
-
-
-
-public record GetRangeResult : AsyncTryResult<Ranges, GetRangeError> {
-
-	public GetRangeResult(Ranges value) : base(value) { }
-
-	public GetRangeResult(GetRangeError error) : base(error) { }
-
-	public static implicit operator GetRangeResult(GetRangeError error) {
-		return new(error);
-	}
-
-}
-
-//[GenerateOneOf]
-public /*partial*/ class GetRangeError /*: OneOfBase<>*/; // todo
-
-
-
-public record GetSuperRangeResult : AsyncTryResult<SuperRange, GetSuperRangeError> {
-
-	public GetSuperRangeResult(SuperRange value) : base(value) { }
-
-	public GetSuperRangeResult(GetSuperRangeError error) : base(error) { }
-
-	public static implicit operator GetSuperRangeResult(SuperRange value) {
-		return new(value);
-	}
-
-	public static implicit operator GetSuperRangeResult(GetSuperRangeError error) {
-		return new(error);
-	}
-
-	public static implicit operator GetSuperRangeResult(GetPrecedingRangeError error) {
-		return new(error);
-	}
-
-	public static implicit operator GetSuperRangeResult(GetContainingRangeError error) {
-		return new(error);
-	}
-
-	public static implicit operator GetSuperRangeResult(GetSubsequentRangeError error) {
-		return new(error);
-	}
-
-	public static implicit operator GetSuperRangeResult(RangeOperationError error) {
-		return new(error);
-	}
-
-}
-
-[GenerateOneOf]
-public partial class GetSuperRangeError : OneOfBase<
-	SuperRange,
-	GetPrecedingRangeError,
-	GetContainingRangeError,
-	GetSubsequentRangeError,
-	RangeOperationError
->;
-
-public record GetPrecedingRangeError {
-
-	public required GetRangeError Error { get; init; }
-
-	public required string DeviceId { get; init; }
-
-	public required long RecordId { get; init; }
-
-	public required RecordType Type { get; init; }
-
-	[SetsRequiredMembers]
-	public GetPrecedingRangeError(GetRangeError error, string deviceId, long recordId, RecordType type) {
-		Error = error;
-		DeviceId = deviceId;
-		RecordId = recordId;
-		Type = type;
-	}
-
-}
-
-public record GetContainingRangeError {
-
-	public required GetRangeError Error { get; init; }
-
-	public required string DeviceId { get; init; }
-
-	public required long RecordId { get; init; }
-
-	public required RecordType Type { get; init; }
-
-	[SetsRequiredMembers]
-	public GetContainingRangeError(GetRangeError error, string deviceId, long recordId, RecordType type) {
-		Error = error;
-		DeviceId = deviceId;
-		RecordId = recordId;
-		Type = type;
-	}
-
-}
-
-public record GetSubsequentRangeError {
-
-	public required GetRangeError Error { get; init; }
-
-	public required string DeviceId { get; init; }
-
-	public required long RecordId { get; init; }
-
-	public required RecordType Type { get; init; }
-
-	[SetsRequiredMembers]
-	public GetSubsequentRangeError(GetRangeError error, string deviceId, long recordId, RecordType type) {
-		Error = error;
-		DeviceId = deviceId;
-		RecordId = recordId;
-		Type = type;
-	}
-
-}
-
-
-
-public record AddRangeToIndexResult : AsyncTryValueResult<Success, AddRangeToIndexError> {
-
-	public AddRangeToIndexResult(Success value) : base(value) { }
-
-	public AddRangeToIndexResult(AddRangeToIndexError error) : base(error) { }
-
-	public static implicit operator AddRangeToIndexResult(Success success) {
-		return new(success);
-	}
-
-	public static implicit operator AddRangeToIndexResult(AddRangeToIndexError error) {
-		return new(error);
-	}
-
-	public static implicit operator AddRangeToIndexResult(RollbackError<InsertDataResult> error) {
-		return new AddRangeToIndexError(error);
-	}
-
-}
-
-public record AddRangeToIndexError(RollbackError<InsertDataResult> Error);
-
-
-
-public record DeleteRangeFromIndexResult : AsyncTryValueResult<Success, DeleteRangeFromIndexError> {
-
-	public DeleteRangeFromIndexResult(Success value) : base(value) { }
-
-	public DeleteRangeFromIndexResult(DeleteRangeFromIndexError error) : base(error) { }
-
-	public static implicit operator DeleteRangeFromIndexResult(Success success) {
-		return new(success);
-	}
-
-	public static implicit operator DeleteRangeFromIndexResult(DeleteRangeFromIndexError error) {
-		return new(error);
-	}
-
-	public static implicit operator DeleteRangeFromIndexResult(RollbackError<DeleteDataError> error) {
-		return new DeleteRangeFromIndexError(error);
-	}
-
-}
-
-public record DeleteRangeFromIndexError(RollbackError<DeleteDataError> Error);

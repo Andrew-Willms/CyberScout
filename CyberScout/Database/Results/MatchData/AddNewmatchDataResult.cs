@@ -2,6 +2,7 @@
 using OneOf;
 using SqliteUtilities;
 using Willmsy.AsyncTryResult;
+using SetRecordMetaDataError = Database.Sqlite.Indexer.SetRecordMetaDataError;
 
 namespace Database.Results.MatchData;
 

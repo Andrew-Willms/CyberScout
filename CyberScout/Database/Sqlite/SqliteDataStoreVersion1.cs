@@ -7,6 +7,7 @@ using Database.Results.Event;
 using Database.Results.GameSpec;
 using Database.Results.MatchData;
 using Database.Results.Scout;
+using Database.Sqlite.Indexer;
 using Domain.Data;
 using Domain.GameSpecification;
 using Microsoft.Data.Sqlite;
@@ -672,7 +673,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 
 
-	public Task<GetMatchDataBtGameResult> GetMatchDataFromGame(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true, bool ignorePatchVersion = true) {
+	public Task<GetMatchDataByGameResult> GetMatchDataFromGame(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true, bool ignorePatchVersion = true) {
 		throw new NotImplementedException();
 	}
 
@@ -755,7 +756,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(newMatchDataDto.DeviceId, nextMatchId, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError<Indexer.SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
@@ -849,7 +850,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(newEditedMatchDataDto.DeviceId, nextMatchId, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError<Indexer.SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
@@ -913,7 +914,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(importMatchDataDto.DeviceId, importMatchDataDto.MatchId, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError<Indexer.SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
@@ -954,7 +955,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(matchDataToDelete.DeviceId, matchDataToDelete.MatchId, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError<Indexer.SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
@@ -993,7 +994,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		// -------- Update Record Index Table --------
 		MatchIndexMetaData metaData = MatchIndexMetaData.CreateNoneMatch();
 
-		BulkSetRecordMetaData updateIndexResult = await Indexer.SetMatchIndexMetaData(eventDto, metaData);
+		BulkSetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(eventDto, metaData);
 		if (updateIndexResult.IsFailure) {
 			return await RollbackError<BulkSetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
 		}
@@ -1034,7 +1035,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		// -------- Update Record Index Table --------
 		MatchIndexMetaData metaData = MatchIndexMetaData.CreateNoneMatch();
 
-		BulkSetRecordMetaData updateIndexResult = await Indexer.SetMatchIndexMetaData(gameDto, metaData);
+		BulkSetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(gameDto, metaData);
 		if (updateIndexResult.IsFailure) {
 			return await RollbackError<BulkSetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
 		}
@@ -1052,26 +1053,27 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		// -------- Open Transaction --------
 		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
-		if (await openTransaction.ExecuteNonQueryAndExpect(0) is DataStoreError openTransactionError) {
-			return openTransactionError;
+		if (await openTransaction.ExecuteNonQueryAndExpect(0) is ExecuteNonQueryAndExpectError openTransactionError) {
+			return new BeginTransactionError(openTransactionError);
 		}
 
 		// -------- Delete Match Data --------
 		SqliteCommand deleteMatchData = new($"DELETE FROM \"{nameof(Tables.MatchData)}\"", Connection);
 
-		if (await deleteMatchData.ExecuteNonQueryAndExpect(1) is DataStoreError addMatchDataError) {
-			return addMatchDataError;
+		if (await deleteMatchData.ExecuteNonQueryUnchecked() is ExecuteNonQueryUncheckedError deleteMatchDataError) {
+			return await RollbackError<BulkDeleteDataError>.TryRollback(deleteMatchDataError, Connection);
 		}
 
 		// -------- Update Record Index Table --------
-		if (await Indexer.ResetMatchIndex() is DataStoreError updateIndexError) {
-			return updateIndexError;
+		ResetIndexResult deleteResult = await Indexer.ResetMatchIndex();
+		if (deleteResult.IsFailure) {
+			return await RollbackError<BulkSetRecordMetaDataError>.TryRollback(deleteResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
 		SqliteCommand commitTransaction = new("COMMIT;", Connection);
-		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is DataStoreError commitError) {
-			return await RollbackError.TryRollback(commitError, Connection);
+		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError commitError) {
+			return await RollbackError<CommitTransactionError>.TryRollback(commitError, Connection);
 		}
 
 		return new Success();
@@ -1240,7 +1242,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		});
 	}
 
-	public async Task<GetMatchDataBtGameResult> Old_GetMatchData() {
+	public async Task<GetMatchDataByGameResult> Old_GetMatchData() {
 
 		SqliteCommand getMatchDataCommand = new(
 			$"SELECT * FROM \"{nameof(Tables.MatchData)}\";",
