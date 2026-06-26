@@ -71,7 +71,7 @@ public record MatchIndexMetaData : RecordMetaData  {
 
 
 
-public record Ranges {
+public record IndexRange {
 
 	public long Start { get; }
 
@@ -79,13 +79,13 @@ public record Ranges {
 
 	public RecordMetaData MetaData { get; }
 
-	private Ranges(long start, long end, RecordMetaData metaData) {
+	private IndexRange(long start, long end, RecordMetaData metaData) {
 		Start = start;
 		End = end;
 		MetaData = metaData;
 	}
 
-	public static Ranges? Create(long start, long end, RecordMetaData metaData) {
+	public static IndexRange? Create(long start, long end, RecordMetaData metaData) {
 
 		if (start > end) {
 			return null;
@@ -103,17 +103,17 @@ public record Ranges {
 
 
 /// <summary>
-/// A collection of contiguous <see cref="Sqlite.Ranges"/>.
+/// A collection of contiguous <see cref="IndexRange"/>.
 /// </summary>
 public record SuperRange {
 
-	public ReadOnlyList<Ranges> Ranges { get; }
+	public ReadOnlyList<IndexRange> Ranges { get; }
 
-	private SuperRange(ReadOnlyList<Ranges> ranges) {
+	private SuperRange(ReadOnlyList<IndexRange> ranges) {
 		Ranges = ranges;
 	}
 
-	public static SuperRange? Create(List<Ranges> ranges) {
+	public static SuperRange? Create(List<IndexRange> ranges) {
 
 		if (ranges.IsEmpty()) {
 			return null;
@@ -121,7 +121,7 @@ public record SuperRange {
 
 		long previousEnd = ranges.First().Start - 1;
 
-		foreach (Ranges range in ranges) {
+		foreach (IndexRange range in ranges) {
 
 			if (range.Start != previousEnd + 1) {
 				return null;
@@ -130,7 +130,7 @@ public record SuperRange {
 			previousEnd = range.End;
 		}
 
-		ReadOnlyList<Ranges> checkedRanges = ranges.ToReadOnly();
+		ReadOnlyList<IndexRange> checkedRanges = ranges.ToReadOnly();
 		return new(checkedRanges);
 	}
 
@@ -146,15 +146,15 @@ public record SuperRange {
 			return null;
 		}
 
-		List<Ranges> newRanges = new(Ranges.Count + 2);
-		foreach (Ranges range in Ranges) {
+		List<IndexRange> newRanges = new(Ranges.Count + 2);
+		foreach (IndexRange range in Ranges) {
 
 			if (!range.Contains(indexToOverwrite)) {
 				newRanges.Add(range);
 				continue;
 			}
 
-			Ranges newRange = Sqlite.Ranges.Create(indexToOverwrite, indexToOverwrite, newMetaData) ?? throw new UnreachableException();
+			IndexRange newRange = Sqlite.IndexRange.Create(indexToOverwrite, indexToOverwrite, newMetaData) ?? throw new UnreachableException();
 
 			if (range.Start == indexToOverwrite && range.End == indexToOverwrite) {
 				newRanges.Add(newRange);
@@ -163,19 +163,19 @@ public record SuperRange {
 
 			if (range.Start == indexToOverwrite) {
 				newRanges.Add(newRange);
-				newRanges.Add(Sqlite.Ranges.Create(indexToOverwrite + 1, range.End, range.MetaData) ?? throw new UnreachableException());
+				newRanges.Add(Sqlite.IndexRange.Create(indexToOverwrite + 1, range.End, range.MetaData) ?? throw new UnreachableException());
 				continue;
 			}
 
 			if (range.End == indexToOverwrite) {
-				newRanges.Add(Sqlite.Ranges.Create(range.Start, indexToOverwrite - 1, range.MetaData) ?? throw new UnreachableException());
+				newRanges.Add(Sqlite.IndexRange.Create(range.Start, indexToOverwrite - 1, range.MetaData) ?? throw new UnreachableException());
 				newRanges.Add(newRange);
 				continue;
 			}
 
-			newRanges.Add(Sqlite.Ranges.Create(range.Start, indexToOverwrite - 1, range.MetaData) ?? throw new UnreachableException());
+			newRanges.Add(Sqlite.IndexRange.Create(range.Start, indexToOverwrite - 1, range.MetaData) ?? throw new UnreachableException());
 			newRanges.Add(newRange);
-			newRanges.Add(Sqlite.Ranges.Create(indexToOverwrite + 1, range.End, range.MetaData) ?? throw new UnreachableException());
+			newRanges.Add(Sqlite.IndexRange.Create(indexToOverwrite + 1, range.End, range.MetaData) ?? throw new UnreachableException());
 		}
 
 		SuperRange newSuperRangeUnsimplified = Create(newRanges) ?? throw new UnreachableException();
@@ -189,23 +189,23 @@ public record SuperRange {
 			return this;
 		}
 
-		List<Ranges> simplifiedRanges = [];
+		List<IndexRange> simplifiedRanges = [];
 
 		long currentStart = Ranges.First().Start;
 		RecordMetaData currentStatus = Ranges.First().MetaData;
 
-		foreach (Ranges range in Ranges.Skip(1)) {
+		foreach (IndexRange range in Ranges.Skip(1)) {
 
 			if (currentStatus.Equals(range.MetaData)) {
 				continue;
 			}
 
-			simplifiedRanges.Add(Sqlite.Ranges.Create(currentStart, range.Start - 1, currentStatus) ?? throw new UnreachableException());
+			simplifiedRanges.Add(Sqlite.IndexRange.Create(currentStart, range.Start - 1, currentStatus) ?? throw new UnreachableException());
 			currentStart = range.Start;
 			currentStatus = range.MetaData;
 		}
 
-		simplifiedRanges.Add(Sqlite.Ranges.Create(currentStart, Ranges.Last().End, currentStatus) ?? throw new UnreachableException());
+		simplifiedRanges.Add(Sqlite.IndexRange.Create(currentStart, Ranges.Last().End, currentStatus) ?? throw new UnreachableException());
 
 		return Create(simplifiedRanges) ?? throw new UnreachableException();
 	}

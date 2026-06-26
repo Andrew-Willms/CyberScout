@@ -4,9 +4,9 @@ namespace Database.Sqlite.Indexer;
 
 
 
-public record GetRangeResult : AsyncTryResult<Ranges, GetRangeError> {
+public record GetRangeResult : AsyncTryResult<IndexRange, GetRangeError> {
 
-	public GetRangeResult(Ranges value) : base(value) { }
+	public GetRangeResult(IndexRange value) : base(value) { }
 
 	public GetRangeResult(GetRangeError error) : base(error) { }
 

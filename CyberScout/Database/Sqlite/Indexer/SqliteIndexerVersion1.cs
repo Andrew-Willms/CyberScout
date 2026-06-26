@@ -51,7 +51,7 @@ public class SqliteIndexerVersion1 {
 			return new RangeOperationError();
 		}
 
-		foreach (Ranges range in existingRanges.Ranges) {
+		foreach (IndexRange range in existingRanges.Ranges) {
 
 			DeleteRangeFromIndexResult deleteResult = await DeleteRangeFromIndex(deviceId, range);
 			if (deleteResult.IsFailure) {
@@ -59,7 +59,7 @@ public class SqliteIndexerVersion1 {
 			}
 		}
 
-		foreach (Ranges range in updatedRangeSet.Ranges) {
+		foreach (IndexRange range in updatedRangeSet.Ranges) {
 
 			AddRangeToIndexResult addResult = await AddRangeToIndex(deviceId, range);
 			if (addResult.IsFailure) {
@@ -135,7 +135,7 @@ public class SqliteIndexerVersion1 {
 		throw new NotImplementedException();
 	}
 
-	private async Task<GetRangeResult> GetRanges(EventDto eventDto) {
+	private async Task<GetRangesResult> GetRanges(EventDto eventDto) {
 
 	}
 
@@ -146,8 +146,8 @@ public class SqliteIndexerVersion1 {
 			return new GetContainingRangeError(containingRangeResult.Error, deviceId, recordId, type);
 		}
 
-		Ranges containingRange = containingRangeResult.Value;
-		List<Ranges> relevantRanges = new(3);
+		IndexRange containingRange = containingRangeResult.Value;
+		List<IndexRange> relevantRanges = new(3);
 
 		// If the index is at the very start of the containingRange and isn't the first possible index (0) then we need to check the preceding range.
 		if (containingRange.Start == recordId && recordId != 0) {
@@ -185,7 +185,7 @@ public class SqliteIndexerVersion1 {
 		return superRange;
 	}
 
-	private async Task<AddRangeToIndexResult> AddRangeToIndex(string deviceId, Ranges range) {
+	private async Task<AddRangeToIndexResult> AddRangeToIndex(string deviceId, IndexRange range) {
 
 		SqliteCommand addRecordRange;
 
@@ -284,7 +284,7 @@ public class SqliteIndexerVersion1 {
 		return Success.Instance;
 	}
 
-	private async Task<DeleteRangeFromIndexResult> DeleteRangeFromIndex(string deviceId, Ranges range) {
+	private async Task<DeleteRangeFromIndexResult> DeleteRangeFromIndex(string deviceId, IndexRange range) {
 
 		string tableName = range.MetaData switch {
 			GameIndexMetaData => nameof(Tables.GameIndex),
