@@ -61,8 +61,8 @@ public static class Tables {
 	// amount of data as a match. I don't think it will meaningfully slow things down, and it's very convenient to treat everything the same.
 	public static class EventMetaData {
 		public const string DeviceId = "DeviceId";
-		public const string EventMetaDataId = "EventMetaDataId";
-		public const string EventDataId = "EventDataId";
+		public const string MetaDataId = "MetaDataId";
+		public const string DataId = "DataId";
 		public const string TimePublished = "TimePublished";
 		public const string Source = "Source";
 	}

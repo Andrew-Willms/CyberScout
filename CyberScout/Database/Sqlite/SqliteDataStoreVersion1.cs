@@ -13,8 +13,6 @@ using Domain.GameSpecification;
 using Microsoft.Data.Sqlite;
 using SqliteUtilities;
 using UtilitiesLibrary.Collections;
-using Willmsy.AsyncTryResult;
-using static Database.Sqlite.Tables;
 
 namespace Database.Sqlite;
 
@@ -420,19 +418,19 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EventMetaData)}" (
 			     "{Tables.EventMetaData.DeviceId}" TEXT NOT NULL,
-			     "{Tables.EventMetaData.EventMetaDataId}" INTEGER NOT NULL,
-			     "{Tables.EventMetaData.EventDataId}" INTEGER NOT NULL,
+			     "{Tables.EventMetaData.MetaDataId}" INTEGER NOT NULL,
+			     "{Tables.EventMetaData.DataId}" INTEGER NOT NULL,
 			     "{Tables.EventMetaData.TimePublished}" INTEGER NOT NULL,
 			     "{Tables.EventMetaData.Source}" TEXT NOT NULL CHECK ("{Tables.EventMetaData.Source}" IN ('{nameof(EventDataSources.TheBlueAlliance)}', '{EventDataSources.Manual}'))
 			     
-			     PRIMARY KEY ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.EventMetaDataId}"),
+			     PRIMARY KEY ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.MetaDataId}"),
 			     
 			     FOREIGN KEY "{Tables.EventMetaData.DeviceId}"
 			         REFERENCES "{nameof(Tables.KnownDevices)}" ("{Tables.KnownDevices.DeviceId}")
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT,
 			 	
-			     FOREIGN KEY "{Tables.EventMetaData.EventDataId}"
+			     FOREIGN KEY "{Tables.EventMetaData.DataId}"
 			         REFERENCES "{nameof(Tables.EventData)}" ("{Tables.EventData.EventDataId}")
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT,
@@ -583,7 +581,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			             ON DELETE RESTRICT,
 			 		     
 			     FOREIGN KEY ("{Tables.MatchData.EventDeviceId}", "{Tables.MatchData.EventMetaDataId}")
-			         REFERENCES "{nameof(Tables.EventMetaData)}" ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.EventMetaDataId}")
+			         REFERENCES "{nameof(Tables.EventMetaData)}" ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.MetaDataId}")
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT
 			 );
@@ -1076,7 +1074,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			return await RollbackError<CommitTransactionError>.TryRollback(commitError, Connection);
 		}
 
-		return new Success();
+		return Success.Instance;
 	}
 
 
@@ -1088,7 +1086,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			Connection
 		);
 
-		AsyncTryResult<string, DataStoreError> result = await command.TryExecuteReferenceScalar<string>();
+		TextScalarResult result = await command.ExecuteTextScalar();
 		if (result.IsFailure) {
 			return result.Error;
 		}
@@ -1108,12 +1106,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		command.Parameters.Add(new("@Name", SqliteType.Text) { Value = scoutName });
 
-		DataStoreError? error = await command.ExecuteNonQueryAndExpect(1);
-		if (error is not null) {
+		if (await command.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError error) {
 			return error;
 		}
 
-		return new Success();
+		return Success.Instance;
 	}
 
 

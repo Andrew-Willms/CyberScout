@@ -20,10 +20,10 @@ public record DeleteRangeFromIndexResult : AsyncTryValueResult<Success, DeleteRa
 		return new(error);
 	}
 
-	public static implicit operator DeleteRangeFromIndexResult(RollbackError<DeleteDataError> error) {
+	public static implicit operator DeleteRangeFromIndexResult(DeleteDataError error) {
 		return new DeleteRangeFromIndexError(error);
 	}
 
 }
 
-public record DeleteRangeFromIndexError(RollbackError<DeleteDataError> Error);
+public record DeleteRangeFromIndexError(DeleteDataError Error);

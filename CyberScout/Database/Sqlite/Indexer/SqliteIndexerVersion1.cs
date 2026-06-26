@@ -73,6 +73,12 @@ public class SqliteIndexerVersion1 {
 
 
 	public async Task<BulkSetRecordMetaDataResult> SetMatchIndexMetaData(EventDto eventDto, MatchIndexMetaData metaData) {
+
+		GetSuperRangesResult superRangesResult = await GetSuperRanges(eventDto);
+		if (superRangesResult.IsFailure) {
+			return superRangesResult.Error;
+		}
+
 		throw new NotImplementedException();
 	}
 
@@ -106,7 +112,7 @@ public class SqliteIndexerVersion1 {
 		SqliteCommand deleteRecordRange = new($"DELETE FROM \"{tableName}\";", Connection);
 
 		if (await deleteRecordRange.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError deleteRecordRangeError) {
-			return await RollbackError<ExecuteNonQueryAndExpectError>.TryRollback(deleteRecordRangeError, Connection);
+			return deleteRecordRangeError;
 		}
 
 
@@ -137,6 +143,70 @@ public class SqliteIndexerVersion1 {
 
 	private async Task<GetRangesResult> GetRanges(EventDto eventDto) {
 
+		SqliteCommand getEventDataId = new(
+			$"""
+			 SELECT "{Tables.EventMetaData.DataId}" FROM "{nameof(Tables.EventMetaData)}"
+			 WHERE "{Tables.EventMetaData.DeviceId}" = @DeviceId
+			   AND "{Tables.EventMetaData.MetaDataId}" <= @MetaDataId
+			 """,
+			Connection);
+
+		getEventDataId.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = eventDto.DeviceId });
+		getEventDataId.Parameters.Add(new("@MetaDataId", SqliteType.Integer) { Value = eventDto.MetaDataId });
+
+		IntegerScalarResult getEventDataIdResult = await getEventDataId.ExecuteIntegerScalar();
+		if (getEventDataIdResult.IsFailure) {
+			return getEventDataIdResult.Error;
+		}
+
+		long eventDataId = getEventDataIdResult.Value;
+
+		SqliteCommand getIndexRange = new(
+			$"""
+			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
+			 WHERE "{Tables.MatchIndex.EventDataId}" = @EventDataId
+			 """,
+			Connection);
+
+		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = eventDataId });
+
+		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
+
+		throw new NotImplementedException();
+	}
+
+	private async Task<GetRangesResult> GetRanges(GameDto gameDto) {
+
+		SqliteCommand getEventDataId = new(
+			$"""
+			 SELECT "{Tables.EventMetaData.DataId}" FROM "{nameof(Tables.EventMetaData)}"
+			 WHERE "{Tables.EventMetaData.DeviceId}" = @DeviceId
+			   AND "{Tables.EventMetaData.MetaDataId}" <= @MetaDataId
+			 """,
+			Connection);
+
+		getEventDataId.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = gameDto.DeviceId });
+		getEventDataId.Parameters.Add(new("@MetaDataId", SqliteType.Integer) { Value = gameDto.GameId });
+
+		IntegerScalarResult getEventDataIdResult = await getEventDataId.ExecuteIntegerScalar();
+		if (getEventDataIdResult.IsFailure) {
+			return getEventDataIdResult.Error;
+		}
+
+		long eventDataId = getEventDataIdResult.Value;
+
+		SqliteCommand getIndexRange = new(
+			$"""
+			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
+			 WHERE "{Tables.MatchIndex.EventDataId}" = @EventDataId
+			 """,
+			Connection);
+
+		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = eventDataId });
+
+		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
+
+		throw new NotImplementedException();
 	}
 
 	private async Task<GetSuperRangeResult> GetSuperRangeAround(string deviceId, long recordId, RecordType type) {
@@ -184,6 +254,15 @@ public class SqliteIndexerVersion1 {
 
 		return superRange;
 	}
+
+	private async Task<GetSuperRangesResult> GetSuperRanges(EventDto eventDto) {
+		throw new NotImplementedException();
+	}
+
+	private async Task<GetSuperRangesResult> GetSuperRanges(GameDto gameDto) {
+		throw new NotImplementedException();
+	}
+
 
 	private async Task<AddRangeToIndexResult> AddRangeToIndex(string deviceId, IndexRange range) {
 
@@ -278,7 +357,7 @@ public class SqliteIndexerVersion1 {
 		}
 
 		if (await addRecordRange.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError addRecordRangeError) {
-			return await RollbackError<InsertDataResult>.TryRollback(addRecordRangeError, Connection);
+			return new InsertDataResult(addRecordRangeError);
 		}
 
 		return Success.Instance;
@@ -309,7 +388,7 @@ public class SqliteIndexerVersion1 {
 		deleteRecordRange.Parameters.Add(new("@Status", SqliteType.Text) { Value = range.MetaData.Status });
 
 		if (await deleteRecordRange.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError deleteRecordRangeError) {
-			return await RollbackError<DeleteDataError>.TryRollback(deleteRecordRangeError, Connection);
+			return new DeleteDataError(deleteRecordRangeError);
 		}
 
 		return Success.Instance;

@@ -1,4 +1,4 @@
-﻿using Database.Sqlite;
+﻿using Database.Sqlite.Indexer;
 using OneOf;
 using SqliteUtilities;
 using Willmsy.AsyncTryResult;

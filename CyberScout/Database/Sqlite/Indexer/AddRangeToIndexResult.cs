@@ -20,10 +20,10 @@ public record AddRangeToIndexResult : AsyncTryValueResult<Success, AddRangeToInd
 		return new(error);
 	}
 
-	public static implicit operator AddRangeToIndexResult(RollbackError<InsertDataResult> error) {
+	public static implicit operator AddRangeToIndexResult(InsertDataResult error) {
 		return new AddRangeToIndexError(error);
 	}
 
 }
 
-public record AddRangeToIndexError(RollbackError<InsertDataResult> Error);
+public record AddRangeToIndexError(InsertDataResult Error);

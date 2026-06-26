@@ -1,4 +1,6 @@
-﻿using Willmsy.AsyncTryResult;
+﻿using OneOf;
+using SqliteUtilities;
+using Willmsy.AsyncTryResult;
 
 namespace Database.Sqlite.Indexer;
 
@@ -14,7 +16,13 @@ public record GetRangesResult : AsyncTryResult<List<IndexRange>, GetRangesError>
 		return new(error);
 	}
 
+	public static implicit operator GetRangesResult(IntegerScalarError error) {
+		return new(error);
+	}
+
 }
 
-//[GenerateOneOf]
-public /*partial*/ class GetRangesError /*: OneOfBase<>*/; // todo
+[GenerateOneOf]
+public partial class GetRangesError : OneOfBase<
+	IntegerScalarError
+>;
