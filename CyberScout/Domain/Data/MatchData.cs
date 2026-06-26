@@ -273,9 +273,7 @@ public class MatchData : IEquatable<MatchData> {
 				case BooleanDataFieldSpec when dataFieldValues[index] is bool:
 				case TextDataFieldSpec when dataFieldValues[index] is string:
 				case IntegerDataFieldSpec when dataFieldValues[index] is int:
-				case MultiIntegerDataFieldSpec when dataFieldValues[index] is int:
 				case SelectionDataFieldSpec { RequiresValue: true } when dataFieldValues[index] is Optional<string>:
-				case SelectionDataFieldSpec { RequiresValue: false } when dataFieldValues[index] is Optional<string> or Optional:
 					results.Add(dataFieldValues[index]);
 					continue;
 

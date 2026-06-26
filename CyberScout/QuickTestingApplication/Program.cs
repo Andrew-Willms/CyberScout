@@ -26,7 +26,7 @@ public class Program {
 
 		SetLastScoutResult success = await dataStore.SetLastScout("test");
 
-		if (success.IsT1) {
+		if (success.IsFailure) {
 			throw new();
 		}
 

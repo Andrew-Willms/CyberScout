@@ -237,9 +237,6 @@ public class AppManager : INotifyPropertyChanged {
 				case (IntegerDataField integerDataField, int intValue):
 					integerDataField.Value = intValue;
 					break;
-				case (MultiIntegerDataField multiIntegerDataField, int intValue):
-					multiIntegerDataField.Value = intValue;
-					break;
 				case (SelectionDataField selectionDataField, Optional<string> selection):
 					selectionDataField.Value = selection;
 					break;
