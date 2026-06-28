@@ -121,8 +121,6 @@ public record ColumnReadError(string ColumnName, SafeGetColumnError Error);
 
 public record NullableColumnReadError(string ColumnName, SafeGetNullableColumnError Error);
 
-public record
-
 public record CommitTransactionError(ExecuteNonQueryAndExpectError Error) {
 
 	public static implicit operator CommitTransactionError(ExecuteNonQueryAndExpectError error) {

@@ -33,6 +33,9 @@ public record BulkDeleteMatchDataResult : AsyncTryValueResult<Success, BulkDelet
 	public static implicit operator BulkDeleteMatchDataResult(RollbackError<BulkSetRecordMetaDataError> error) {
 		return new(error);
 	}
+	public static implicit operator BulkDeleteMatchDataResult(RollbackError<ResetIndexError> error) {
+		return new(error);
+	}
 
 	public static implicit operator BulkDeleteMatchDataResult(RollbackError<CommitTransactionError> error) {
 		return new(error);
@@ -46,5 +49,6 @@ public partial class BulkDeleteMatchDataError : OneOfBase<
 	BeginTransactionError,
 	RollbackError<BulkDeleteDataError>,
 	RollbackError<BulkSetRecordMetaDataError>,
+	RollbackError<ResetIndexError>,
 	RollbackError<CommitTransactionError>
 >;

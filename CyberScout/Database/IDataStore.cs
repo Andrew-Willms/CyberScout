@@ -39,8 +39,6 @@ public interface IDataStore {
 
 
 
-	public Task<GetMatchDataResult> GetAllMatchData();
-
 	public Task<GetMatchDataResult> GetMatchDataFromGame(GameDto gameDto);
 
 	public Task<AddNewMatchDataResult> AddNewMatchData(NewMatchDataDto newMatchDataDto);

@@ -40,7 +40,7 @@ public class SqliteIndexerVersion1 {
 
 	private async Task<SetRecordMetaDataResult> SetRecordMetaData(string deviceId, long recordId, RecordMetaData metaData, RecordType type) {
 
-		GetSuperRangeResult superRangeResult = await GetSuperRangeAround(deviceId, recordId, type);
+		GetSuperRangeResult superRangeResult = await GetSuperRange(deviceId, recordId, type);
 		if (superRangeResult.IsFailure) {
 			return superRangeResult.Error;
 		}
@@ -70,144 +70,7 @@ public class SqliteIndexerVersion1 {
 		return Success.Instance;
 	}
 
-
-
-	public async Task<BulkSetRecordMetaDataResult> SetMatchIndexMetaData(EventDto eventDto, MatchIndexMetaData metaData) {
-
-		GetSuperRangesResult superRangesResult = await GetSuperRanges(eventDto);
-		if (superRangesResult.IsFailure) {
-			return superRangesResult.Error;
-		}
-
-		throw new NotImplementedException();
-	}
-
-	public async Task<BulkSetRecordMetaDataResult> SetMatchIndexMetaData(GameDto gameDto, MatchIndexMetaData metaData) {
-		throw new NotImplementedException();
-	}
-
-
-
-	public async Task<ResetIndexResult> ResetGameIndex() {
-		return await ResetIndex(RecordType.Game);
-	}
-
-	public async Task<ResetIndexResult> ResetEventIndex() {
-		return await ResetIndex(RecordType.Event);
-	}
-
-	public async Task<ResetIndexResult> ResetMatchIndex() {
-		return await ResetIndex(RecordType.Match);
-	}
-
-	private async Task<ResetIndexResult> ResetIndex(RecordType type) {
-
-		string tableName = type switch {
-			RecordType.Game => nameof(Tables.GameIndex),
-			RecordType.Event => nameof(Tables.EventIndex),
-			RecordType.Match => nameof(Tables.MatchIndex),
-			_ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
-		};
-
-		SqliteCommand deleteRecordRange = new($"DELETE FROM \"{tableName}\";", Connection);
-
-		if (await deleteRecordRange.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError deleteRecordRangeError) {
-			return deleteRecordRangeError;
-		}
-
-		return Success.Instance;
-	}
-
-
-
-	private async Task<GetRangeResult> GetRange(string deviceId, long recordId, RecordType type) {
-
-		SqliteCommand getIndexRange = new(
-			$"""
-			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
-			 WHERE "{Tables.MatchIndex.DeviceId}" = @DeviceId
-			   AND "{Tables.MatchIndex.StartIndex}" <= @Index
-			   AND "{Tables.MatchIndex.EndIndex}" >= @Index
-			 """,
-			Connection);
-
-		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = deviceId });
-		getIndexRange.Parameters.Add(new("@Index", SqliteType.Integer) { Value = recordId });
-
-		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
-
-		throw new NotImplementedException();
-	}
-
-	private async Task<GetRangesResult> GetRanges(EventDto eventDto) {
-
-		SqliteCommand getEventDataId = new(
-			$"""
-			 SELECT "{Tables.EventMetaData.DataId}" FROM "{nameof(Tables.EventMetaData)}"
-			 WHERE "{Tables.EventMetaData.DeviceId}" = @DeviceId
-			   AND "{Tables.EventMetaData.MetaDataId}" <= @MetaDataId
-			 """,
-			Connection);
-
-		getEventDataId.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = eventDto.DeviceId });
-		getEventDataId.Parameters.Add(new("@MetaDataId", SqliteType.Integer) { Value = eventDto.MetaDataId });
-
-		IntegerScalarResult getEventDataIdResult = await getEventDataId.ExecuteIntegerScalar();
-		if (getEventDataIdResult.IsFailure) {
-			return getEventDataIdResult.Error;
-		}
-
-		long eventDataId = getEventDataIdResult.Value;
-
-		SqliteCommand getIndexRange = new(
-			$"""
-			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
-			 WHERE "{Tables.MatchIndex.EventDataId}" = @EventDataId
-			 """,
-			Connection);
-
-		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = eventDataId });
-
-		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
-
-		throw new NotImplementedException();
-	}
-
-	private async Task<GetRangesResult> GetRanges(GameDto gameDto) {
-
-		SqliteCommand getEventDataId = new(
-			$"""
-			 SELECT "{Tables.EventMetaData.DataId}" FROM "{nameof(Tables.EventMetaData)}"
-			 WHERE "{Tables.EventMetaData.DeviceId}" = @DeviceId
-			   AND "{Tables.EventMetaData.MetaDataId}" <= @MetaDataId
-			 """,
-			Connection);
-
-		getEventDataId.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = gameDto.DeviceId });
-		getEventDataId.Parameters.Add(new("@MetaDataId", SqliteType.Integer) { Value = gameDto.GameId });
-
-		IntegerScalarResult getEventDataIdResult = await getEventDataId.ExecuteIntegerScalar();
-		if (getEventDataIdResult.IsFailure) {
-			return getEventDataIdResult.Error;
-		}
-
-		long eventDataId = getEventDataIdResult.Value;
-
-		SqliteCommand getIndexRange = new(
-			$"""
-			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
-			 WHERE "{Tables.MatchIndex.EventDataId}" = @EventDataId
-			 """,
-			Connection);
-
-		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = eventDataId });
-
-		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
-
-		throw new NotImplementedException();
-	}
-
-	private async Task<GetSuperRangeResult> GetSuperRangeAround(string deviceId, long recordId, RecordType type) {
+	private async Task<GetSuperRangeResult> GetSuperRange(string deviceId, long recordId, RecordType type) {
 
 		GetRangeResult containingRangeResult = await GetRange(deviceId, recordId, type);
 		if (containingRangeResult.IsFailure) {
@@ -253,13 +116,152 @@ public class SqliteIndexerVersion1 {
 		return superRange;
 	}
 
+	private async Task<GetRangeResult> GetRange(string deviceId, long recordId, RecordType type) {
+
+		SqliteCommand getIndexRange = new(
+			$"""
+			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
+			 WHERE "{Tables.MatchIndex.DeviceId}" = @DeviceId
+			   AND "{Tables.MatchIndex.StartIndex}" <= @Index
+			   AND "{Tables.MatchIndex.EndIndex}" >= @Index
+			 """,
+			Connection);
+
+		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = deviceId });
+		getIndexRange.Parameters.Add(new("@Index", SqliteType.Integer) { Value = recordId });
+
+		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
+
+		throw new NotImplementedException();
+	}
+
+
+
+	public async Task<BulkSetRecordMetaDataResult> SetMatchIndexMetaData(EventDto eventDto, MatchIndexMetaData metaData) {
+
+		GetSuperRangesResult superRangesResult = await GetSuperRanges(eventDto);
+		if (superRangesResult.IsFailure) {
+			return superRangesResult.Error;
+		}
+
+		throw new NotImplementedException();
+	}
+
 	private async Task<GetSuperRangesResult> GetSuperRanges(EventDto eventDto) {
+		throw new NotImplementedException();
+	}
+
+	private async Task<GetRangesResult> GetRanges(EventDto eventDto) {
+
+		SqliteCommand getEventDataId = new(
+			$"""
+			 SELECT "{Tables.EventMetaData.DataId}" FROM "{nameof(Tables.EventMetaData)}"
+			 WHERE "{Tables.EventMetaData.DeviceId}" = @DeviceId
+			   AND "{Tables.EventMetaData.MetaDataId}" <= @MetaDataId
+			 """,
+			Connection);
+
+		getEventDataId.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = eventDto.DeviceId });
+		getEventDataId.Parameters.Add(new("@MetaDataId", SqliteType.Integer) { Value = eventDto.MetaDataId });
+
+		IntegerScalarResult getEventDataIdResult = await getEventDataId.ExecuteIntegerScalar();
+		if (getEventDataIdResult.IsFailure) {
+			return getEventDataIdResult.Error;
+		}
+
+		long eventDataId = getEventDataIdResult.Value;
+
+		SqliteCommand getIndexRange = new(
+			$"""
+			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
+			 WHERE "{Tables.MatchIndex.EventDataId}" = @EventDataId
+			 """,
+			Connection);
+
+		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = eventDataId });
+
+		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
+
+		throw new NotImplementedException();
+	}
+
+
+
+	public async Task<BulkSetRecordMetaDataResult> SetMatchIndexMetaData(GameDto gameDto, MatchIndexMetaData metaData) {
 		throw new NotImplementedException();
 	}
 
 	private async Task<GetSuperRangesResult> GetSuperRanges(GameDto gameDto) {
 		throw new NotImplementedException();
 	}
+
+	private async Task<GetRangesResult> GetRanges(GameDto gameDto) {
+
+		SqliteCommand getEventDataId = new(
+			$"""
+			 SELECT "{Tables.EventMetaData.DataId}" FROM "{nameof(Tables.EventMetaData)}"
+			 WHERE "{Tables.EventMetaData.DeviceId}" = @DeviceId
+			   AND "{Tables.EventMetaData.MetaDataId}" <= @MetaDataId
+			 """,
+			Connection);
+
+		getEventDataId.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = gameDto.DeviceId });
+		getEventDataId.Parameters.Add(new("@MetaDataId", SqliteType.Integer) { Value = gameDto.GameId });
+
+		IntegerScalarResult getEventDataIdResult = await getEventDataId.ExecuteIntegerScalar();
+		if (getEventDataIdResult.IsFailure) {
+			return getEventDataIdResult.Error;
+		}
+
+		long eventDataId = getEventDataIdResult.Value;
+
+		SqliteCommand getIndexRange = new(
+			$"""
+			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
+			 WHERE "{Tables.MatchIndex.EventDataId}" = @EventDataId
+			 """,
+			Connection);
+
+		getIndexRange.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = eventDataId });
+
+		SqliteDataReader reader = await getIndexRange.ExecuteReaderAsync();
+
+		throw new NotImplementedException();
+	}
+
+
+
+
+	public async Task<ResetIndexResult> ResetGameIndex() {
+		return await ResetIndex(RecordType.Game);
+	}
+
+	public async Task<ResetIndexResult> ResetEventIndex() {
+		return await ResetIndex(RecordType.Event);
+	}
+
+	public async Task<ResetIndexResult> ResetMatchIndex() {
+		return await ResetIndex(RecordType.Match);
+	}
+
+	private async Task<ResetIndexResult> ResetIndex(RecordType type) {
+
+		string tableName = type switch {
+			RecordType.Game => nameof(Tables.GameIndex),
+			RecordType.Event => nameof(Tables.EventIndex),
+			RecordType.Match => nameof(Tables.MatchIndex),
+			_ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+		};
+
+		SqliteCommand deleteRecordRange = new($"DELETE FROM \"{tableName}\";", Connection);
+
+		if (await deleteRecordRange.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError deleteRecordRangeError) {
+			return deleteRecordRangeError;
+		}
+
+		return Success.Instance;
+	}
+
 
 
 	private async Task<AddRangeToIndexResult> AddRangeToIndex(string deviceId, IndexRange range) {

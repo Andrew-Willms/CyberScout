@@ -8,13 +8,13 @@ namespace Database.Results.MatchData;
 
 
 
-public record GetMatchDataResult : AsyncTryResult<List<MatchDataDto>, GetAllMatchDataError> {
+public record GetMatchDataResult : AsyncTryResult<List<EditGraph>, GetAllMatchDataError> {
 
-	public GetMatchDataResult(List<MatchDataDto> value) : base(value) { }
+	public GetMatchDataResult(List<EditGraph> value) : base(value) { }
 
 	public GetMatchDataResult(GetAllMatchDataError error) : base(error) { }
 
-	public static implicit operator GetMatchDataResult(List<MatchDataDto> value) {
+	public static implicit operator GetMatchDataResult(List<EditGraph> value) {
 		return new(value);
 	}
 
@@ -50,6 +50,10 @@ public record GetMatchDataResult : AsyncTryResult<List<MatchDataDto>, GetAllMatc
 		return new(error);
 	}
 
+	public static implicit operator GetMatchDataResult(CreateEditGraphError error) {
+		return new(error);
+	}
+
 }
 
 [GenerateOneOf]
@@ -60,5 +64,6 @@ public partial class GetAllMatchDataError : OneOfBase<
 	NullableColumnReadError,
 	ParentsFromTextError,
 	MatchDataDeserializationError,
-	CreateMatchDataDtoError
+	CreateMatchDataDtoError,
+	CreateEditGraphError
 >;

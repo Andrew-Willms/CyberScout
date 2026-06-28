@@ -81,7 +81,6 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return new(connection);
 	}
 
-	// TODO: Consider wrapping internal errors as CreateDataBaseError if this function gets more complicated.
 	private static async Task<CreateTableResult> Create(SqliteConnection connection) {
 
 		CreateTableResult result = await CreateDatabaseVersionTable(connection);
@@ -650,23 +649,6 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 
 
-	public async Task<GetMatchDataResult> GetAllMatchData() {
-
-		SqliteCommand getMatchData = new($"SELECT * FROM \"{nameof(Tables.Games)}\";", Connection);
-
-		SqliteDataReader reader;
-		try {
-			reader = await getMatchData.ExecuteReaderAsync();
-		} catch (Exception exception) {
-			return new ReadDataError(ExceptionError.FromException(exception, getMatchData));
-		}
-
-
-
-
-		throw new NotImplementedException();
-	}
-
 	public async Task<GetMatchDataResult> GetMatchDataFromGame(GameDto gameDto) {
 
 		SqliteCommand getMatchData = new(
@@ -771,14 +753,23 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			allMatchDtos.Add(result.Value);
 		}
 
-		IEnumerable<IGrouping<(string OriginalDeviceId, long OriginalMatchId), MatchDataDto>> groupedMatches = 
-			allMatchDtos.GroupBy(match => (match.OriginalDeviceId, match.OriginalMatchId));
+		List<List<MatchDataDto>> groupedMatches = allMatchDtos
+			.GroupBy(match => (match.OriginalDeviceId, match.OriginalMatchId))
+			.Select(group => group.ToList())
+			.ToList();
 
+		List<EditGraph> editGraphs = [];
+		foreach (List<MatchDataDto> matchGroup in groupedMatches) {
 
+			CreateEditGraphResult createEditGraphResult = EditGraph.Create(matchGroup);
+			if (createEditGraphResult.IsFailure) {
+				return createEditGraphResult.Error;
+			}
 
-		throw new NotImplementedException();
+			editGraphs.Add(createEditGraphResult.Value);
+		}
 
-		return allMatchDtos;
+		return editGraphs;
 	}
 
 	public async Task<AddNewMatchDataResult> AddNewMatchData(NewMatchDataDto newMatchDataDto) {
@@ -1171,7 +1162,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		// -------- Update Record Index Table --------
 		ResetIndexResult deleteResult = await Indexer.ResetMatchIndex();
 		if (deleteResult.IsFailure) {
-			return await RollbackError<BulkSetRecordMetaDataError>.TryRollback(deleteResult.Error, Connection);
+			return await RollbackError<ResetIndexError>.TryRollback(deleteResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
