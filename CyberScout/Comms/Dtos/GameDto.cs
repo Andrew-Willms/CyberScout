@@ -13,6 +13,6 @@ public record GameDto {
 
 	public required DateTime TimePublished { get; init; }
 
-	public required GameSpec Event { get; init; }
+	public required GameSpec Specification { get; init; }
 
 }

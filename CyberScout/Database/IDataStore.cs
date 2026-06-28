@@ -39,7 +39,9 @@ public interface IDataStore {
 
 
 
-	public Task<GetMatchDataFromGameResult> GetMatchDataFromGame(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true, bool ignorePatchVersion = true);
+	public Task<GetMatchDataResult> GetAllMatchData();
+
+	public Task<GetMatchDataResult> GetMatchDataFromGame(GameDto gameDto);
 
 	public Task<AddNewMatchDataResult> AddNewMatchData(NewMatchDataDto newMatchDataDto);
 

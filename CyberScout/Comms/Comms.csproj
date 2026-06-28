@@ -10,6 +10,7 @@
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
 		<PackageReference Include="OneOf" Version="3.0.271" />
 		<PackageReference Include="OneOf.SourceGenerator" Version="3.0.271" />
+		<PackageReference Include="Willmsy.AsyncTryResult" Version="1.0.1" />
 	</ItemGroup>
 
 	<ItemGroup>

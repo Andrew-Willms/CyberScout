@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Drawing;
 using Comms.Dtos;
 using Comms.Serialization;
 using Database.Results;
@@ -11,8 +10,9 @@ using Database.Sqlite.Indexer;
 using Domain.Data;
 using Domain.GameSpecification;
 using Microsoft.Data.Sqlite;
+using OneOf;
 using SqliteUtilities;
-using UtilitiesLibrary.Collections;
+using Willmsy.AsyncTryResult;
 
 namespace Database.Sqlite;
 
@@ -149,12 +149,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			return result;
 		}
 
-		result = await CreateMatchDataTable(connection);
-		if (result.IsFailure) {
-			return result;
-		}
-
-		return await CreateEditGraphVerticesTable(connection);
+		return await CreateMatchDataTable(connection);
 	}
 
 	private static async Task<CreateTableResult> CreateDatabaseVersionTable(SqliteConnection connection) {
@@ -562,6 +557,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     "{Tables.MatchData.MatchId}" INTEGER NOT NULL,
 			     "{Tables.MatchData.OriginalDeviceId}" TEXT NOT NULL,
 			     "{Tables.MatchData.OriginalMatchId}" INTEGER NOT NULL,
+			     "{Tables.MatchData.ParentsAsText}" TEXT,
 			     "{Tables.MatchData.GameDeviceId}" TEXT NOT NULL,
 			     "{Tables.MatchData.GameId}" INTEGER NOT NULL,
 			     "{Tables.MatchData.EventDeviceId}" TEXT NOT NULL,
@@ -591,37 +587,25 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Updates are not allowed on this table. Only Insert and Delete.');
 			 END;
-			 """,
-			connection);
-
-		return await command.ExecuteNonQueryAndExpect(0);
-	}
-
-	private static async Task<CreateTableResult> CreateEditGraphVerticesTable(SqliteConnection connection) {
-
-		SqliteCommand command = new(
-			$"""
-			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EditGraphVertices)}" (
-			     "{Tables.EditGraphVertices.ChildDeviceId}" TEXT NOT NULL,
-			     "{Tables.EditGraphVertices.ChildMatchId}" INTEGER NOT NULL,
-			     "{Tables.EditGraphVertices.ParentDeviceId}" TEXT NOT NULL,
-			     "{Tables.EditGraphVertices.ParentMatchId}" INTEGER NOT NULL,
-			     "{Tables.EditGraphVertices.OriginalDeviceId}" TEXT NOT NULL,
-			     "{Tables.EditGraphVertices.OriginalMatchId}" INTEGER NOT NULL,
-			     "{Tables.EditGraphVertices.Comment}" TEXT,
-			     
-			     PRIMARY KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildMatchId}, {Tables.EditGraphVertices.ParentDeviceId}", "{Tables.EditGraphVertices.ParentMatchId}"),
-			     
-			     FOREIGN KEY ("{Tables.EditGraphVertices.ChildDeviceId}", "{Tables.EditGraphVertices.ChildMatchId}")
-			         REFERENCES "{nameof(Tables.MatchData)}" ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.MatchId}")
-			             ON UPDATE RESTRICT
-			             ON DELETE CASCADE
-			 );
-
-			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.EditGraphVertices)}"
-			 BEFORE UPDATE ON "{nameof(Tables.EditGraphVertices)}"
+			 
+			 CREATE TRIGGER IF NOT EXISTS "original_matches_must_not_have_parents"
+			 BEFORE INSERT ON "{nameof(Tables.MatchData)}"
+			 FOR EACH ROW
+			 WHEN NEW."{Tables.MatchData.OriginalDeviceId}" = NEW."{Tables.MatchData.DeviceId}"
+			  AND NEW."{Tables.MatchData.OriginalMatchId}" = NEW."{Tables.MatchData.MatchId}"
+			  AND NEW."{Tables.MatchData.ParentsAsText}" IS NOT NULL
 			 BEGIN
-			     SELECT RAISE(ABORT, 'Updates are not allowed on this table. Only Insert and Delete.');
+			     SELECT RAISE(ABORT, 'Matches that are not edits of other matches must not specify a parent.');
+			 END;
+			 
+			 CREATE TRIGGER IF NOT EXISTS "edited_matches_must_have_parents"
+			 BEFORE INSERT ON "{nameof(Tables.MatchData)}"
+			 FOR EACH ROW
+			 WHEN (NEW."{Tables.MatchData.OriginalDeviceId}" != NEW."{Tables.MatchData.DeviceId}"
+			   OR NEW."{Tables.MatchData.OriginalMatchId}" != NEW."{Tables.MatchData.MatchId}")
+			  AND NEW."{Tables.MatchData.ParentsAsText}" IS NULL
+			 BEGIN
+			     SELECT RAISE(ABORT, 'Matches that are edits of other matches must specify a parent.');
 			 END;
 			 """,
 			connection);
@@ -671,8 +655,130 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 
 
-	public Task<GetMatchDataFromGameResult> GetMatchDataFromGame(GameSpec game, bool ignoreMajorVersion = false, bool ignoreMinorVersion = true, bool ignorePatchVersion = true) {
+	public async Task<GetMatchDataResult> GetAllMatchData() {
+
+		SqliteCommand getMatchData = new($"SELECT * FROM \"{nameof(Tables.Games)}\";", Connection);
+
+		SqliteDataReader reader;
+		try {
+			reader = await getMatchData.ExecuteReaderAsync();
+		} catch (Exception exception) {
+			return new ReadDataError(ExceptionError.FromException(exception, getMatchData));
+		}
+
+
+
+
 		throw new NotImplementedException();
+	}
+
+	public async Task<GetMatchDataResult> GetMatchDataFromGame(GameDto gameDto) {
+
+		SqliteCommand getMatchData = new(
+			$"""
+			 SELECT * FROM "{nameof(Tables.Games)}"
+			 WHERE "{Tables.Games.DeviceId}" = @DeviceId
+			   AND "{Tables.Games.GameId}" = @GameId;
+			 """,
+			Connection);
+
+		getMatchData.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = gameDto.DeviceId });
+		getMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = gameDto.GameId });
+
+		SqliteDataReader reader;
+		try {
+			reader = await getMatchData.ExecuteReaderAsync();
+		} catch (Exception exception) {
+			return new ReadDataError(ExceptionError.FromException(exception, getMatchData));
+		}
+
+		List<MatchDataDto> allMatchDtos = [];
+		while (reader.Read()) {
+
+			SafeGetTextResult deviceIdResult = reader.SafeGetText(Tables.MatchData.DeviceId);
+			if (deviceIdResult.IsFailure) {
+				return new ColumnReadError(Tables.MatchData.DeviceId, deviceIdResult.Error);
+			}
+			string deviceId = deviceIdResult.Value;
+
+			SafeGetIntegerResult matchIdResult = reader.SafeGetInteger(Tables.MatchData.MatchId);
+			if (matchIdResult.IsFailure) {
+				return new ColumnReadError(Tables.MatchData.MatchId, matchIdResult.Error);
+			}
+			long matchId = matchIdResult.Value;
+
+			SafeGetTextResult originalDeviceIdResult = reader.SafeGetText(Tables.MatchData.OriginalDeviceId);
+			if (originalDeviceIdResult.IsFailure) {
+				return new ColumnReadError(Tables.MatchData.OriginalDeviceId, originalDeviceIdResult.Error);
+			}
+			string originalDeviceId = deviceIdResult.Value;
+
+			SafeGetIntegerResult originalMatchIdResult = reader.SafeGetInteger(Tables.MatchData.OriginalMatchId);
+			if (originalMatchIdResult.IsFailure) {
+				return new ColumnReadError(Tables.MatchData.OriginalMatchId, originalMatchIdResult.Error);
+			}
+			long originalMatchId = matchIdResult.Value;
+
+			SafeGetNullableTextResult parentsRawResult = reader.SafeGetNullableText(Tables.MatchData.ParentsAsText);
+			if (parentsRawResult.IsFailure) {
+				return new NullableColumnReadError(Tables.MatchData.ParentsAsText, parentsRawResult.Error);
+			}
+			string parentsRaw = parentsRawResult.Value.Value.IsT0 ? parentsRawResult.Value.Value.AsT0 : string.Empty;
+
+			ParentsFromTextResult parentListResult = MatchDataDto.ParentsFromText(parentsRaw);
+			if (parentListResult.IsFailure) {
+				return parentListResult.Error;
+			}
+			List<(string deviceId, long matchdId)> parents = parentListResult.Value;
+
+			SafeGetTextResult gameDeviceIdResult = reader.SafeGetText(Tables.MatchData.GameDeviceId);
+			if (gameDeviceIdResult.IsFailure) {
+				return new ColumnReadError(Tables.MatchData.GameDeviceId, gameDeviceIdResult.Error);
+			}
+			string gameDeviceId = gameDeviceIdResult.Value;
+
+			SafeGetIntegerResult gameIdResult = reader.SafeGetInteger(Tables.MatchData.GameId);
+			if (gameIdResult.IsFailure) {
+				return new ColumnReadError(Tables.MatchData.GameId, gameIdResult.Error);
+			}
+			long gameId = gameIdResult.Value;
+
+			SafeGetTextResult eventDeviceIdResult = reader.SafeGetText(Tables.MatchData.EventDeviceId);
+			if (eventDeviceIdResult.IsFailure) {
+				return new ColumnReadError(Tables.MatchData.EventDeviceId, eventDeviceIdResult.Error);
+			}
+			string eventDeviceId = eventDeviceIdResult.Value;
+
+			SafeGetIntegerResult eventMetaDataIdResult = reader.SafeGetInteger(Tables.MatchData.EventMetaDataId);
+			if (eventMetaDataIdResult.IsFailure) {
+				return new ColumnReadError(Tables.MatchData.EventMetaDataId, eventMetaDataIdResult.Error);
+			}
+			long eventMetaDataId = gameIdResult.Value;
+
+			SafeGetTextResult dataResult = reader.SafeGetText(Tables.MatchData.Data);
+			if (dataResult.IsFailure) {
+				return new ColumnReadError(Tables.MatchData.Data, dataResult.Error);
+			}
+			string serializedData = dataResult.Value;
+
+			MatchDataDeserializationResult deserializationResult = MatchDataToCsv.Deserialize(serializedData, gameDto.Specification);
+			if (deserializationResult.IsFailure) {
+				return deserializationResult.Error;
+			}
+
+			CreateMatchDataDtoResult result = MatchDataDto.Create(deserializationResult.Value, deviceId, matchId, originalDeviceId, originalMatchId, parents, gameDeviceId,
+				gameId, eventDeviceId, eventMetaDataId);
+
+			if (result.IsFailure) {
+				return result.Error;
+			}
+
+			allMatchDtos.Add(result.Value);
+		}
+
+		throw new NotImplementedException();
+
+		return allMatchDtos;
 	}
 
 	public async Task<AddNewMatchDataResult> AddNewMatchData(NewMatchDataDto newMatchDataDto) {
@@ -754,7 +860,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(newMatchDataDto.DeviceId, nextMatchId, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<Indexer.SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError<SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
@@ -848,7 +954,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(newEditedMatchDataDto.DeviceId, nextMatchId, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<Indexer.SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError<SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
@@ -912,7 +1018,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(importMatchDataDto.DeviceId, importMatchDataDto.MatchId, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<Indexer.SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError<SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
@@ -953,7 +1059,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(matchDataToDelete.DeviceId, matchDataToDelete.MatchId, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<Indexer.SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError<SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
@@ -1115,7 +1221,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 
 
-	public async Task<GetMatchDataFromGameResult> Old_GetMatchData() {
+	public async Task<GetMatchDataResult> Old_GetMatchData() {
 
 		SqliteCommand getMatchDataCommand = new(
 			$"SELECT * FROM \"{nameof(Tables.MatchData)}\";",

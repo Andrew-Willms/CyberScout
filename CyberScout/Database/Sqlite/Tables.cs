@@ -96,29 +96,20 @@ public static class Tables {
 		// a device to have the original match data in order to have descendant match data.
 		public const string OriginalDeviceId = "OriginalDeviceId";
 		public const string OriginalMatchId = "OriginalMatchId";
+		public const string ParentsAsText = "ParentsAsText";
 
 		public const string GameDeviceId = "GameDeviceId";
 		public const string GameId = "GameId";
+
+		// EventDeviceId and EventMetaDataId are foreign keys. This means that a device must have an event before it can
+		// accept any matches made from that event. This may result in some friction when sharing the first match from a 
+		// device via QR code. In most cases this friction should be able to be eliminated by having devices pinging the
+		// central server for event data (which will ping TBA and create event data authored by the central server that
+		// can then be used by all devices) instead of having each device ping TBA individually (resulting in each device
+		// having uniquely authored event data).
 		public const string EventDeviceId = "EventDeviceId";
 		public const string EventMetaDataId = "EventMetaDataId";
 		public const string Data = "Data";
-	}
-
-	public static class EditGraphVertices {
-		public const string ChildDeviceId = "ChildDeviceId";
-		public const string ChildMatchId = "ChildMatchId";
-
-		// ParentDeviceId and ParentRecordId are not foreign keys because I do not want to require
-		// a device to have the parent match data in order to have descendant match data.
-		public const string ParentDeviceId = "ParentDeviceId";
-		public const string ParentMatchId = "ParentMatchId";
-
-		// OriginalDeviceId and OriginalRecordId are not foreign keys because I do not want to require
-		// a device to have the original match data in order to have descendant match data.
-		public const string OriginalDeviceId = "OriginalDeviceId";
-		public const string OriginalMatchId = "OriginalMatchId";
-
-		public const string Comment = "Comment";
 	}
 
 }

@@ -18,23 +18,4 @@ public record NewMatchDataDto {
 
 	public required long EventMetaDataId { get; init; }
 
-
-
-	// Create method for if I need additional data validation
-	//private NewMatchDataDto() { }
-	//
-	//public static NewMatchDataDto Create(
-	//	MatchData matchData,
-	//	string deviceId,
-	//	string gameDeviceId,
-	//	uint gameId) {
-	//
-	//	return new() {
-	//		MatchData = matchData,
-	//		DeviceId = deviceId,
-	//		GameDeviceId = gameDeviceId,
-	//		GameId = gameId
-	//	};
-	//}
-
 }

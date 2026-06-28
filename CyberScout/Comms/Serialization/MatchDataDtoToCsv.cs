@@ -267,7 +267,7 @@ public static class MatchDataDtoToCsv {
 			gameDeviceId: gameDeviceId,
 			gameId: gameId,
 			eventDeviceId: eventDeviceId,
-			eventId: eventId
+			eventMetaDataId: eventId
 		);
 	}
 

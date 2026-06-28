@@ -9,13 +9,28 @@ using OneOf;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.MiscExtensions;
 using UtilitiesLibrary.Optional;
+using Willmsy.AsyncTryResult;
 
 namespace Comms.Serialization;
 
 
 
 [GenerateOneOf]
-public partial class MatchDataDeserializationResult : OneOfBase<MatchData, MatchDataDeserializationError>;
+public partial record MatchDataDeserializationResult : AsyncTryResult<MatchData, MatchDataDeserializationError> {
+
+	public MatchDataDeserializationResult(MatchData value) : base(value) { }
+
+	public MatchDataDeserializationResult(MatchDataDeserializationError error) : base(error) { }
+
+	public static implicit operator MatchDataDeserializationResult(MatchData value) {
+		return new(value);
+	}
+
+	public static implicit operator MatchDataDeserializationResult(MatchDataDeserializationError error) {
+		return new(error);
+	}
+
+}
 
 // TODO: Consider making this a OneOf<> to enforce exhaustive matching on switch
 // The SerializedMatchData and GameSpecification properties could be moved to an interface?

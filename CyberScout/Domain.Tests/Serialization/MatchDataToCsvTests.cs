@@ -38,7 +38,7 @@ public class MatchDataToCsvTests {
 			gameDeviceId: "gameDeviceId",
 			gameId: 1,
 			eventDeviceId: "eventDeviceId",
-			eventId: 1
+			eventMetaDataId: 1
 		)!;
 
 		string serialized = MatchDataDtoToCsv.Serialize(matchDataDto);
@@ -62,7 +62,7 @@ public class MatchDataToCsvTests {
 			gameDeviceId: "gameDeviceId",
 			gameId: 1,
 			eventDeviceId: "eventDeviceId",
-			eventId: 1
+			eventMetaDataId: 1
 		)!;
 
 		string serialized = MatchDataDtoToCsv.Serialize(matchDataDto);
