@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using Comms.Dtos;
+﻿using Comms.Dtos;
 using Comms.Serialization;
 using Database.Results;
 using Database.Results.Event;
@@ -7,12 +6,8 @@ using Database.Results.GameSpec;
 using Database.Results.MatchData;
 using Database.Results.Scout;
 using Database.Sqlite.Indexer;
-using Domain.Data;
-using Domain.GameSpecification;
 using Microsoft.Data.Sqlite;
-using OneOf;
 using SqliteUtilities;
-using Willmsy.AsyncTryResult;
 
 namespace Database.Sqlite;
 
@@ -776,6 +771,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			allMatchDtos.Add(result.Value);
 		}
 
+		IEnumerable<IGrouping<(string OriginalDeviceId, long OriginalMatchId), MatchDataDto>> groupedMatches = 
+			allMatchDtos.GroupBy(match => (match.OriginalDeviceId, match.OriginalMatchId));
+
+
+
 		throw new NotImplementedException();
 
 		return allMatchDtos;
@@ -1217,111 +1217,6 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		return Success.Instance;
-	}
-
-
-
-	public async Task<GetMatchDataResult> Old_GetMatchData() {
-
-		SqliteCommand getMatchDataCommand = new(
-			$"SELECT * FROM \"{nameof(Tables.MatchData)}\";",
-			Connection);
-
-		SqliteDataReader reader;
-		try {
-			reader = await getMatchDataCommand.ExecuteReaderAsync();
-		} catch (Exception exception) {
-			return exception;
-		}
-
-		GameSpec gameSpec = (await GetGameSpecs()).FirstOrDefault() ?? throw new UnreachableException(); // todo
-
-		List<MatchDataDto> allMatchDtos = [];
-		while (reader.Read()) {
-
-			string deviceId = reader.GetString(0);
-			int recordId = reader.GetInt32(1);
-			string serializedMatch = reader.GetString(2);
-			string? editOfDeviceId = reader[3] is DBNull ? null : reader.GetString(3);
-			int? editOfRecordId = reader[4] is DBNull ? null : reader.GetInt32(4);
-
-			MatchDataDeserializationResult result = MatchDataToCsv.Deserialize(serializedMatch, gameSpec);
-
-			if (result.IsT1) {
-				return result.AsT1;
-			}
-
-			MatchData data = result.AsT0;
-
-			switch (editOfDeviceId, editOfRecordId) {
-
-				case ({ } originatingDeviceId, { } originalRecordId):
-					allMatchDtos.Add(new() {
-						MatchData = data,
-						DeviceId = deviceId,
-						RecordId = recordId,
-						EditBasedOn = (originatingDeviceId, originalRecordId)
-					});
-					break;
-
-				case (null, null):
-					allMatchDtos.Add(new() {
-						MatchData = data,
-						DeviceId = deviceId,
-						RecordId = recordId,
-						EditBasedOn = null
-					});
-					break;
-
-				case ({ } originatingDeviceId, null):
-					return new InvalidEditIdsError(originatingDeviceId);
-
-				case (null, { } originalRecordId):
-					return new InvalidEditIdsError(originalRecordId);
-			}
-		}
-
-		// Since editing match data isn't implemented yet and there is no conflict resolution implemented editing
-		// matches won't work and the below code is moot. Instead, just return the original match data.
-		//return allMatchDtos.Where(x => x.EditBasedOn is null).ToList();
-
-		// Identify all the match data that are original (not edits of existing match data).
-		// Create an "Edit Chain" for each original match (starting with the original match itself).
-		List<List<MatchDataDto>> editChains = allMatchDtos
-			.Where(x => x.EditBasedOn is null)
-			.Select(x => new List<MatchDataDto> { x })
-			.ToList();
-
-		// Iterate over all match data that is an edit of prior match data.
-		// Ensure that all edits either directly or transitively (through one or more other edit match data records) point to original match data.
-		// The current implementation of this relies on lower degree edits being earlier in the list than higher degree edit.
-		// This order is not guaranteed but seems to be working, possibly because no one is actually editing data.
-		// A first degree edit is an edit of the original data, a second degree edit is an edit of a first degree edit, etc.
-		// This implementation also doesn't work with things like edit trees.
-
-		List<MatchDataDto> unlinkedEditData = allMatchDtos.Where(x => x.EditBasedOn is not null).ToList();
-		int lastCountOfUnlinkedEditData = unlinkedEditData.Count;
-		while (true) {
-
-			foreach (MatchDataDto editData in unlinkedEditData) {
-
-				List<MatchDataDto>? activeEditChain = editChains.FirstOrDefault(x =>
-					x.Count > 0 && // should be guaranteed
-					(x.Last().DeviceId, x.Last().RecordId) == editData.EditBasedOn);
-
-				// The active edit chain will be null if the edit data is part of an edit branch that was not chosen.
-				activeEditChain?.Add(editData);
-			}
-
-			// If all the edit data has a home or if the remaining edit paths are not part of the branch that has been chosen, exit.
-			// If the edit history of a match has branched only pick on branch and ignore the edit data from the other branches.
-			// Whichever branch is returned by the database first will be chosen.
-			if (unlinkedEditData.Count == 0 || lastCountOfUnlinkedEditData == unlinkedEditData.Count) {
-				break;
-			}
-		}
-
-		return editChains.Select(x => x.Last()).ToList();
 	}
 
 }
