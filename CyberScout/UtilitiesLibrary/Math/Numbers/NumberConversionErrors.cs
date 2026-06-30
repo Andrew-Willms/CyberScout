@@ -5,37 +5,37 @@ namespace UtilitiesLibrary.Math.Numbers;
 
 
 
-public class InvalidCharactersError : Error { }
+public class InvalidCharactersOldError : OldError { }
 
-public class ArgumentNullError : Error { }
+public class ArgumentNullOldError : OldError { }
 
-public class ValueTooLargeError : Error { }
+public class ValueTooLargeOldError : OldError { }
 
-public class ValueTooSmallError : Error { }
+public class ValueTooSmallOldError : OldError { }
 
-public class ValueIsNotWholeNumberError : Error { }
+public class ValueIsNotWholeNumberOldError : OldError { }
 
-public class ValueIsNotPositiveError : Error { }
+public class ValueIsNotPositiveOldError : OldError { }
 
 
 
-public interface IIntegerToPrimitiveResult<T> : IResult<T> where T : INumber<T> {
+public interface IIntegerToPrimitiveOldResult<T> : IOldResult<T> where T : INumber<T> {
 
-	public class Success : IResult<T>.Success, IIntegerToPrimitiveResult<T> { }
+	public class OldSuccess : IOldResult<T>.OldSuccess, IIntegerToPrimitiveOldResult<T> { }
 
-	public class ValueBelowMin : Error, IIntegerToPrimitiveResult<T> { }
+	public class ValueBelowMin : OldError, IIntegerToPrimitiveOldResult<T> { }
 
-	public class ValueAboveMax : Error, IIntegerToPrimitiveResult<T> { }
+	public class ValueAboveMax : OldError, IIntegerToPrimitiveOldResult<T> { }
 
 }
 
-public interface INumberToPrimitiveResult<T> : IResult<T> where T : INumber<T> {
+public interface INumberToPrimitiveOldResult<T> : IOldResult<T> where T : INumber<T> {
 
-	public class Success : IResult<T>.Success, INumberToPrimitiveResult<T> { }
+	public class OldSuccess : IOldResult<T>.OldSuccess, INumberToPrimitiveOldResult<T> { }
 
-	public class ValueBelowMin : Error, INumberToPrimitiveResult<T> { }
+	public class ValueBelowMin : OldError, INumberToPrimitiveOldResult<T> { }
 
-	public class ValueAboveMax : Error, INumberToPrimitiveResult<T> { }
+	public class ValueAboveMax : OldError, INumberToPrimitiveOldResult<T> { }
 
 	//public class DecimalsCannotBeRepresented : IResult<T>.Error, IIntegerToPrimitiveResult<T> { }
 

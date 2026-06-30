@@ -13,21 +13,21 @@ namespace GameMakerWpf.AppManagement;
 
 public interface IPublisher {
 
-	public IPublishResult Publish(GameEditor gameEditor);
+	public IPublishOldResult Publish(GameEditor gameEditor);
 
-	public interface IPublishResult : IResult {
+	public interface IPublishOldResult : IOldResult {
 
-		public new class Success : IResult.Success, IPublishResult;
+		public new class OldSuccess : IOldResult.OldSuccess, IPublishOldResult;
 
-		public class Aborted : Error, IPublishResult;
+		public class Aborted : OldError, IPublishOldResult;
 
-		public class GameEditorCouldNotBeConvertedToGameSpecification : Error, IPublishResult;
+		public class GameEditorCouldNotBeConvertedToGameSpecification : OldError, IPublishOldResult;
 
-		public class GameSpecificationCouldNotBeConvertedToSaveData : Error, IPublishResult;
+		public class GameSpecificationCouldNotBeConvertedToSaveData : OldError, IPublishOldResult;
 
-		public class SaveLocationDoesNotExist : Error, IPublishResult;
+		public class SaveLocationDoesNotExist : OldError, IPublishOldResult;
 
-		public class SaveLocationCouldNotBeWrittenTo : Error, IPublishResult;
+		public class SaveLocationCouldNotBeWrittenTo : OldError, IPublishOldResult;
 
 	}
 
@@ -42,19 +42,19 @@ public class FilePublisher : IPublisher {
 		Filter = "CyberScout Game Specification (*.cgs)|*.cgs"
 	};
 
-	public IPublishResult Publish(GameEditor gameEditor) {
+	public IPublishOldResult Publish(GameEditor gameEditor) {
 
 		GameSpec? gameSpecSpecification = gameEditor.ToGameSpecification();
 
 		if (gameSpecSpecification is null) {
-			return new IPublishResult.GameEditorCouldNotBeConvertedToGameSpecification();
+			return new IPublishOldResult.GameEditorCouldNotBeConvertedToGameSpecification();
 		}
 
 		SaveFileDialog saveFileDialog = SaveFileDialog;
 		bool? proceed = saveFileDialog.ShowDialog();
 
 		if (proceed is null or false) {
-			return new IPublishResult.Aborted();
+			return new IPublishOldResult.Aborted();
 		}
 
 		string filePath = saveFileDialog.FileName;
@@ -62,7 +62,7 @@ public class FilePublisher : IPublisher {
 		string folderPath = string.Join("\\", filePathPieces[..^1]);
 
 		if (!Directory.Exists(folderPath)) {
-			return new IPublishResult.SaveLocationDoesNotExist();
+			return new IPublishOldResult.SaveLocationDoesNotExist();
 		}
 
 		string serializedGameSpecification;
@@ -70,17 +70,17 @@ public class FilePublisher : IPublisher {
 			serializedGameSpecification = JsonConvert.SerializeObject(gameSpecSpecification, JsonSettings.JsonSerializerSettings);
 
 		} catch {
-			return new IPublishResult.GameSpecificationCouldNotBeConvertedToSaveData();
+			return new IPublishOldResult.GameSpecificationCouldNotBeConvertedToSaveData();
 		}
 
 		try {
 			File.WriteAllText(filePath, serializedGameSpecification);
 
 		} catch {
-			return new IPublishResult.SaveLocationCouldNotBeWrittenTo();
+			return new IPublishOldResult.SaveLocationCouldNotBeWrittenTo();
 		}
 
-		return new IPublishResult.Success();
+		return new IPublishOldResult.OldSuccess();
 	}
 
 }

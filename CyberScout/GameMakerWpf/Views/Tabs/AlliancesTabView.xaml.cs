@@ -65,14 +65,14 @@ public partial class AlliancesTabView : AppManagerDependent, INotifyPropertyChan
 			throw new InvalidOperationException("The RemoveButton should not be enabled if no Alliance is selected.");
 		}
 
-		IListRemoveResult result = Alliances.Remove(SelectedAlliance);
+		IListRemoveOldResult oldResult = Alliances.Remove(SelectedAlliance);
 
-		switch (result) {
+		switch (oldResult) {
 
-			case IListRemoveResult<AllianceEditor>.Success:
+			case IListRemoveOldResult<AllianceEditor>.OldSuccess:
 				return;
 
-			case IListRemoveResult<AllianceEditor>.ItemNotFound error:
+			case IListRemoveOldResult<AllianceEditor>.ItemNotFound error:
 				ErrorPresenter.DisplayError(error, RemoveFromListErrors.RemoveAllianceError);
 				return;
 

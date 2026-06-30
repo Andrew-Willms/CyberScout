@@ -7,8 +7,8 @@ using GameMakerWpf.Domain.Editors.DataFieldEditors;
 using Microsoft.Extensions.DependencyInjection;
 using WPFUtilities;
 using static GameMakerWpf.AppManagement.ISavePrompter;
-using static GameMakerWpf.AppManagement.ISaver.ISaveAsResult;
-using static GameMakerWpf.AppManagement.ISaver.ISaveResult;
+using static GameMakerWpf.AppManagement.ISaver.ISaveAsOldResult;
+using static GameMakerWpf.AppManagement.ISaver.ISaveOldResult;
 
 namespace GameMakerWpf.AppManagement;
 
@@ -120,23 +120,23 @@ public class AppManager : IAppManager, INotifyPropertyChanged {
 			return;
 		}
 
-		ISaver.ISaveResult result = Saver.Save(GameEditor.ToEditingData());
+		ISaver.ISaveOldResult oldResult = Saver.Save(GameEditor.ToEditingData());
 
-		switch (result) {
+		switch (oldResult) {
 
-			case ISaver.ISaveResult.Success:
+			case ISaver.ISaveOldResult.OldSuccess:
 				ProjectIsSaved = true;
 				return;
 
-			case NoSaveLocationSpecified error:
+			case NoSaveOldLocationSpecified error:
 				ErrorPresenter.DisplayError(error, SaveErrors.NoSaveLocationSpecified);
 				break;
 
-			case SaveLocationInaccessible error:
+			case SaveOldLocationInaccessible error:
 				ErrorPresenter.DisplayError(error, SaveErrors.SaveLocationInaccessible);
 				break;
 
-			case GameEditingDataCouldNotBeConvertedToSaveData error:
+			case GameEditingDataCouldNotBeConvertedToSaveOldData error:
 				ErrorPresenter.DisplayError(error, SaveErrors.GameEditingDataCouldNotBeConvertedToSaveData);
 				break;
 
@@ -147,11 +147,11 @@ public class AppManager : IAppManager, INotifyPropertyChanged {
 
 	public void SaveGameProjectAs() {
 
-		ISaver.ISaveAsResult result = Saver.SetSaveLocation();
+		ISaver.ISaveAsOldResult oldResult = Saver.SetSaveLocation();
 
-		switch (result) {
+		switch (oldResult) {
 
-			case UtilitiesLibrary.Results.Success:
+			case UtilitiesLibrary.Results.OldSuccess:
 				break;
 
 			case Aborted:
@@ -175,22 +175,22 @@ public class AppManager : IAppManager, INotifyPropertyChanged {
 			return;
 		}
 
-		ISaver.IOpenResult openResult = Saver.Open();
+		ISaver.IOpenOldResult openOldResult = Saver.Open();
 
-		switch (openResult) {
+		switch (openOldResult) {
 
-			case ISaver.IOpenResult.Success newGameEditingData:
+			case ISaver.IOpenOldResult.OldSuccess newGameEditingData:
 				GameEditor = new(newGameEditingData.Value);
 				return;
 
-			case ISaver.IOpenResult.Aborted:
+			case ISaver.IOpenOldResult.Aborted:
 				return;
 
-			case ISaver.IOpenResult.SaveLocationInaccessible error:
+			case ISaver.IOpenOldResult.SaveLocationInaccessible error:
 				ErrorPresenter.DisplayError(error, OpenError.SaveLocationInaccessible);
 				return;
 
-			case ISaver.IOpenResult.SavedDataCouldNotBeConvertedToGameEditingData error:
+			case ISaver.IOpenOldResult.SavedDataCouldNotBeConvertedToGameEditingData error:
 				ErrorPresenter.DisplayError(error, OpenError.SavedDataCouldNotBeConvertedToGameEditingData);
 				return;
 
@@ -212,29 +212,29 @@ public class AppManager : IAppManager, INotifyPropertyChanged {
 
 	public void Publish() {
 
-		IPublisher.IPublishResult result = Publisher.Publish(GameEditor);
+		IPublisher.IPublishOldResult oldResult = Publisher.Publish(GameEditor);
 
-		switch (result) {
+		switch (oldResult) {
 
-			case UtilitiesLibrary.Results.Success:
+			case UtilitiesLibrary.Results.OldSuccess:
 				break;
 
-			case IPublisher.IPublishResult.Aborted:
+			case IPublisher.IPublishOldResult.Aborted:
 				return;
 
-			case IPublisher.IPublishResult.GameEditorCouldNotBeConvertedToGameSpecification error:
+			case IPublisher.IPublishOldResult.GameEditorCouldNotBeConvertedToGameSpecification error:
 				ErrorPresenter.DisplayError(error, PublishErrors.GameEditorCouldNotBeConvertedToGameSpecification);
 				return;
 
-			case IPublisher.IPublishResult.GameSpecificationCouldNotBeConvertedToSaveData error:
+			case IPublisher.IPublishOldResult.GameSpecificationCouldNotBeConvertedToSaveData error:
 				ErrorPresenter.DisplayError(error, PublishErrors.GameSpecificationCouldNotBeConvertedToSaveData);
 				return;
 
-			case IPublisher.IPublishResult.SaveLocationDoesNotExist error:
+			case IPublisher.IPublishOldResult.SaveLocationDoesNotExist error:
 				ErrorPresenter.DisplayError(error, PublishErrors.SaveLocationDoesNotExist);
 				return;
 
-			case IPublisher.IPublishResult.SaveLocationCouldNotBeWrittenTo error:
+			case IPublisher.IPublishOldResult.SaveLocationCouldNotBeWrittenTo error:
 				ErrorPresenter.DisplayError(error, PublishErrors.SaveLocationCouldNotBeWrittenTo);
 				return;
 

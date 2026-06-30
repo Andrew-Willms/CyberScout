@@ -84,7 +84,7 @@ public class SampleData : IEnumerable<object[]> {
 				new() { DataFieldName = "Disconnected", Label = "Disconnected" },
 				new() { DataFieldName = "Defense", Label = "Defense Effectiveness" },
 				new() { DataFieldName = "Comments", Label = "Comments" },
-			}.ToReadOnly()) as IResult<GameSpec>.Success)!.Value;
+			}.ToReadOnly()) as IOldResult<GameSpec>.OldSuccess)!.Value;
 
 	private readonly List<object[]> Data = [
 

@@ -58,14 +58,14 @@ public partial class DataFieldTabView : AppManagerDependent, INotifyPropertyChan
 			throw new InvalidOperationException("The RemoveButton should not be enabled if no DataField is selected.");
 		}
 
-		IListRemoveResult<DataFieldEditor> result = DataFields.Remove(SelectedDataField);
+		IListRemoveOldResult<DataFieldEditor> oldResult = DataFields.Remove(SelectedDataField);
 
-		switch (result) {
+		switch (oldResult) {
 
-			case Success:
+			case OldSuccess:
 				return;
 
-			case IListRemoveResult<DataFieldEditor>.ItemNotFound error:
+			case IListRemoveOldResult<DataFieldEditor>.ItemNotFound error:
 				ErrorPresenter.DisplayError(error, RemoveFromListErrors.RemoveDataFieldError);
 				return;
 

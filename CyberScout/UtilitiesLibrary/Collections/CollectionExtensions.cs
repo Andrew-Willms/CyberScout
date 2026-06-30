@@ -37,9 +37,9 @@ public static class CollectionExtensions {
 		}
 	}
 
-	public static void AddValueIfIsSuccess<T>(this List<T> list, IResult<T> result) {
+	public static void AddValueIfIsSuccess<T>(this List<T> list, IOldResult<T> oldResult) {
 
-		if (result is IResult<T>.Success success) {
+		if (oldResult is IOldResult<T>.OldSuccess success) {
 			list.Add(success.Value);
 		}
 	}

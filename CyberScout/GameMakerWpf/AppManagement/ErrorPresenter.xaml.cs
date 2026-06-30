@@ -11,7 +11,7 @@ namespace GameMakerWpf.AppManagement;
 
 public interface IErrorPresenter {
 
-	public void DisplayError<TError>(TError error, Func<TError, ErrorDisplayData> errorDisplayDataGetter) where TError : Error;
+	public void DisplayError<TError>(TError error, Func<TError, ErrorDisplayData> errorDisplayDataGetter) where TError : OldError;
 
 }
 
@@ -42,7 +42,7 @@ public partial class ErrorPresenter : Window, IErrorPresenter, INotifyPropertyCh
 		InitializeComponent();
 	}
 
-	public void DisplayError<TError>(TError error, Func<TError, ErrorDisplayData> errorDisplayDataGetter) where TError : Error {
+	public void DisplayError<TError>(TError error, Func<TError, ErrorDisplayData> errorDisplayDataGetter) where TError : OldError {
 
 		ErrorDisplayData errorDisplayData = errorDisplayDataGetter.Invoke(error);
 

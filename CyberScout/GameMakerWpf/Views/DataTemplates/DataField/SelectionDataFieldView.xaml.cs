@@ -81,14 +81,14 @@ public partial class SelectionDataFieldView : AppManagerDependent, INotifyProper
 			throw new InvalidOperationException($"You should not be able to remove an option when the {nameof(Editor)} is null.");
 		}
 
-		IListRemoveResult<SingleInput<string, string, ErrorSeverity>> result = Options.Remove(SelectedOption);
+		IListRemoveOldResult<SingleInput<string, string, ErrorSeverity>> oldResult = Options.Remove(SelectedOption);
 
-		switch (result) {
+		switch (oldResult) {
 			
-			case Success:
+			case OldSuccess:
 				return;
 
-			case IListRemoveResult<SingleInput<string, string, ErrorSeverity>>.ItemNotFound error:
+			case IListRemoveOldResult<SingleInput<string, string, ErrorSeverity>>.ItemNotFound error:
 				ErrorPresenter.DisplayError(error, RemoveFromListErrors.RemoveOptionError);
 				return;
 

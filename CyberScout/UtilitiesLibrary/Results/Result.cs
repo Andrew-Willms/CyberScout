@@ -5,69 +5,69 @@ namespace UtilitiesLibrary.Results;
 
 
 
-public abstract class Success;
+public abstract class OldSuccess;
 
-public abstract class Error {
+public abstract class OldError {
 
 	public virtual string Message { get; init; } = string.Empty;
 
-	public Optional<Error> InnerError { get; init; } = Optional.Optional.NoValue;
+	public Optional<OldError> InnerError { get; init; } = Optional.Optional.NoValue;
 
-	public Error() { }
+	public OldError() { }
 
-	public Error(string message) {
+	public OldError(string message) {
 		Message = message;
 	}
 
-	public Error(Error innerError) {
-		InnerError = innerError.Optionalize();
+	public OldError(OldError innerOldError) {
+		InnerError = innerOldError.Optionalize();
 	}
 
-	public Error(string message, Error innerError) {
+	public OldError(string message, OldError innerOldError) {
 		Message = message;
-		InnerError = innerError.Optionalize();
+		InnerError = innerOldError.Optionalize();
 	}
 
 }
 
 
 
-public interface IResult {
+public interface IOldResult {
 
-	public class Success : Results.Success, IResult;
+	public class OldSuccess : Results.OldSuccess, IOldResult;
 
-	public class Error : Results.Error, IResult;
+	public class OldError : Results.OldError, IOldResult;
 
 }
 
-public interface IResult<T> {
+public interface IOldResult<T> {
 
-	public class Success : Results.Success, IResult<T> {
+	public class OldSuccess : Results.OldSuccess, IOldResult<T> {
 
 		public required T Value { get; init; }
 
-		public static implicit operator Success(T value) {
+		public static implicit operator OldSuccess(T value) {
 			return new() { Value = value };
 		}
 
-		public Success() { }
+		public OldSuccess() { }
 
 		[SetsRequiredMembers]
-		public Success(T value) {
+		public OldSuccess(T value) {
 			Value = value;
 		}
 
 	}
 
-	public class Error : Results.Error, IResult<T> {
+	public class OldError : Results.OldError, IOldResult<T> {
 
-		public Error() { }
+		public OldError() { }
 
-		public Error(string message) : base(message) { }
+		public OldError(string message) : base(message) { }
 
-		public Error(Results.Error innerError) : base(innerError) { }
+		public OldError(Results.OldError innerOldError) : base(innerOldError) { }
 
-		public Error(string message, Results.Error innerError) : base(message, innerError) { }
+		public OldError(string message, Results.OldError innerOldError) : base(message, innerOldError) { }
 
 	}
 

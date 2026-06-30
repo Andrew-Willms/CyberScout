@@ -58,14 +58,14 @@ public partial class SetupTabView : AppManagerDependent, INotifyPropertyChanged 
 			throw new InvalidOperationException("The RemoveButton should not be enabled if no Alliance is selected.");
 		}
 
-		IListRemoveResult<InputEditor> result = Inputs.Remove(SelectedInput);
+		IListRemoveOldResult<InputEditor> oldResult = Inputs.Remove(SelectedInput);
 
-		switch (result) {
+		switch (oldResult) {
 
-			case IListRemoveResult<InputEditor>.Success:
+			case IListRemoveOldResult<InputEditor>.OldSuccess:
 				return;
 
-			case IListRemoveResult<InputEditor>.ItemNotFound error:
+			case IListRemoveOldResult<InputEditor>.ItemNotFound error:
 				ErrorPresenter.DisplayError(error, RemoveFromListErrors.RemoveSetupInputError);
 				return;
 

@@ -236,7 +236,7 @@ public class GameEditor {
 			return null;
 		}
 
-		IResult<GameSpec> creationResult = GameSpec.Create(
+		IOldResult<GameSpec> creationOldResult = GameSpec.Create(
 			name: Name.OutputObject.Value,
 			year: Year.OutputObject.Value,
 			description: Description.OutputObject.Value,
@@ -269,9 +269,9 @@ public class GameEditor {
 				.ToReadOnly()
 		);
 
-		return creationResult switch {
-			IResult<GameSpec>.Success success => success.Value ,
-			IResult<GameSpec>.Error => null,
+		return creationOldResult switch {
+			IOldResult<GameSpec>.OldSuccess success => success.Value ,
+			IOldResult<GameSpec>.OldError => null,
 			_ => throw new UnreachableException()
 		};
 	}

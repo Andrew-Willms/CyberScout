@@ -31,20 +31,20 @@ public class ObservableList<TItem, TAdd> : INotifyCollectionChanged, IEnumerable
 		OnAdd?.Invoke(newItem);
 	}
 
-	public IListRemoveResult<TItem> Remove(TItem toRemove) {
+	public IListRemoveOldResult<TItem> Remove(TItem toRemove) {
 
 		if (!Collection.Contains(toRemove)) {
-			return new IListRemoveResult<TItem>.ItemNotFound();
+			return new IListRemoveOldResult<TItem>.ItemNotFound();
 		}
 
 		int index = Collection.IndexOf(toRemove);
 		if (!Collection.Remove(toRemove)) {
-			return new IListRemoveResult<TItem>.OtherFailure();
+			return new IListRemoveOldResult<TItem>.OtherFailure();
 		}
 
 		OnRemove?.Invoke(toRemove);
 		CollectionChanged?.Invoke(this, new(NotifyCollectionChangedAction.Remove, toRemove, index));
-		return new IListRemoveResult<TItem>.Success();
+		return new IListRemoveOldResult<TItem>.OldSuccess();
 	}
 
 
@@ -65,15 +65,15 @@ public class ObservableList<TItem, TAdd> : INotifyCollectionChanged, IEnumerable
 
 
 
-public interface IListRemoveResult : IResult;
+public interface IListRemoveOldResult : IOldResult;
 
 // TODO: Move to its own file
-public interface IListRemoveResult<T> : IListRemoveResult {
+public interface IListRemoveOldResult<T> : IListRemoveOldResult {
 
-	public class Success : IResult.Success, IListRemoveResult<T> { }
+	public class OldSuccess : IOldResult.OldSuccess, IListRemoveOldResult<T> { }
 
-	public class ItemNotFound : Error, IListRemoveResult<T> { }
+	public class ItemNotFound : OldError, IListRemoveOldResult<T> { }
 
-	public class OtherFailure : Error, IListRemoveResult<T> { }
+	public class OtherFailure : OldError, IListRemoveOldResult<T> { }
 
 }

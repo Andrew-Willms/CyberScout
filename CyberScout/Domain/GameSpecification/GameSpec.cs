@@ -33,7 +33,7 @@ public class GameSpec : IEquatable<GameSpec> {
 
 	private GameSpec() { }
 
-	public static IResult<GameSpec> Create(
+	public static IOldResult<GameSpec> Create(
 		string name,
 		int year,
 		string description,
@@ -49,14 +49,14 @@ public class GameSpec : IEquatable<GameSpec> {
 
 		List<string> duplicateNames = alliances.Select(x => x.Name).Duplicates();
 		foreach (string duplicate in duplicateNames) {
-			return new IResult<GameSpec>.Error($"There are multiple alliances with the name '{duplicate}'.");
+			return new IOldResult<GameSpec>.OldError($"There are multiple alliances with the name '{duplicate}'.");
 		}
 
 		foreach (InputSpec input in setupTabInputs) {
 
 			if (!dataFields.Select(x => x.Name).Contains(input.DataFieldName)) {
 
-				return new IResult<GameSpec>.Error($"Input '{input.Label}' from {nameof(SetupTabInputs)} targets the DataField with the " +
+				return new IOldResult<GameSpec>.OldError($"Input '{input.Label}' from {nameof(SetupTabInputs)} targets the DataField with the " +
 												   $"name '{input.DataFieldName}' but no DataField of that name was found.");
 			}
 		}
@@ -65,7 +65,7 @@ public class GameSpec : IEquatable<GameSpec> {
 
 			if (!dataFields.Select(x => x.Name).Contains(input.DataFieldName)) {
 
-				return new IResult<GameSpec>.Error($"Input '{input.Label}' from {nameof(AutoTabInputs)} targets the DataField with the " +
+				return new IOldResult<GameSpec>.OldError($"Input '{input.Label}' from {nameof(AutoTabInputs)} targets the DataField with the " +
 												   $"name '{input.DataFieldName}' but no DataField of that name was found.");
 			}
 		}
@@ -74,7 +74,7 @@ public class GameSpec : IEquatable<GameSpec> {
 
 			if (!dataFields.Select(x => x.Name).Contains(input.DataFieldName)) {
 
-				return new IResult<GameSpec>.Error($"Input '{input.Label}' from {nameof(TeleTabInputs)} targets the DataField with the " +
+				return new IOldResult<GameSpec>.OldError($"Input '{input.Label}' from {nameof(TeleTabInputs)} targets the DataField with the " +
 												   $"name '{input.DataFieldName}' but no DataField of that name was found.");
 			}
 		}
@@ -83,12 +83,12 @@ public class GameSpec : IEquatable<GameSpec> {
 
 			if (!dataFields.Select(x => x.Name).Contains(input.DataFieldName)) {
 
-				return new IResult<GameSpec>.Error($"Input '{input.Label}' from {nameof(EndgameTabInputs)} targets the DataField with the " +
+				return new IOldResult<GameSpec>.OldError($"Input '{input.Label}' from {nameof(EndgameTabInputs)} targets the DataField with the " +
 												   $"name '{input.DataFieldName}' but no DataField of that name was found.");
 			}
 		}
 
-		return new IResult<GameSpec>.Success {
+		return new IOldResult<GameSpec>.OldSuccess {
 			Value = new() {
 				Name = name,
 				Description = description,

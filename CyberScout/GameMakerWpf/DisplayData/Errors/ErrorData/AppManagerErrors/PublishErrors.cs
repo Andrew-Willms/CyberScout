@@ -1,4 +1,4 @@
-﻿using static GameMakerWpf.AppManagement.IPublisher.IPublishResult;
+﻿using static GameMakerWpf.AppManagement.IPublisher.IPublishOldResult;
 
 namespace GameMakerWpf.DisplayData.Errors.ErrorData.AppManagerErrors; 
 

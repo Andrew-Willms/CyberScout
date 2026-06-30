@@ -1,4 +1,4 @@
-﻿using static GameMakerWpf.AppManagement.ISaver.ISaveAsResult;
+﻿using static GameMakerWpf.AppManagement.ISaver.ISaveAsOldResult;
 
 namespace GameMakerWpf.DisplayData.Errors.ErrorData.AppManagerErrors;
 

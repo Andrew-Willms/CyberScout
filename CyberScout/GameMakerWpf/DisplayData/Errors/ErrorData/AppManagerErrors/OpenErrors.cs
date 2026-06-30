@@ -1,4 +1,4 @@
-﻿using static GameMakerWpf.AppManagement.ISaver.IOpenResult;
+﻿using static GameMakerWpf.AppManagement.ISaver.IOpenOldResult;
 
 namespace GameMakerWpf.DisplayData.Errors.ErrorData.AppManagerErrors;
 

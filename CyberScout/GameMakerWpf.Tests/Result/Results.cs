@@ -18,7 +18,7 @@ public class Results {
 	[Fact]
 	public void AllNestedClassesInResultInterfacesInheritTheContainingResultInterface() {
 
-		foreach (Type containingResultInterface in GameMakerAssembly.GetInterfaces().Where(x => x.Implements(typeof(IResult)))) {
+		foreach (Type containingResultInterface in GameMakerAssembly.GetInterfaces().Where(x => x.Implements(typeof(IOldResult)))) {
 
 			foreach (Type resultOption in containingResultInterface.GetNestedClasses()) {
 
@@ -31,7 +31,7 @@ public class Results {
 	[Fact]
 	public void AllNestedClassesInValueResultInterfacesInheritTheContainingResultInterface() {
 
-		foreach (Type containingResultInterface in GameMakerAssembly.GetInterfaces().Where(x => x.Implements(typeof(IResult<>)))) {
+		foreach (Type containingResultInterface in GameMakerAssembly.GetInterfaces().Where(x => x.Implements(typeof(IOldResult<>)))) {
 
 			foreach (Type resultOption in containingResultInterface.GetNestedClasses()) {
 
@@ -46,13 +46,13 @@ public class Results {
 	[Fact]
 	public void AllResultNestedClassesImplementErrorOrSuccess() {
 
-		foreach (Type containingResultInterface in GameMakerAssembly.GetInterfaces().Where(x => x.Implements(typeof(IResult)))) {
+		foreach (Type containingResultInterface in GameMakerAssembly.GetInterfaces().Where(x => x.Implements(typeof(IOldResult)))) {
 
 			foreach (Type resultOption in containingResultInterface.GetNestedClasses()) {
 
-				Assert.True(resultOption.IsAssignableTo(typeof(IResult.Success)) || resultOption.IsAssignableTo(typeof(IResult.Error)),
+				Assert.True(resultOption.IsAssignableTo(typeof(IOldResult.OldSuccess)) || resultOption.IsAssignableTo(typeof(IOldResult.OldError)),
 					$"The type '{resultOption}' is nested within a result interface but does not inherit from " +
-					$"'{typeof(IResult.Error)}' or '{typeof(IResult.Success)}'.");
+					$"'{typeof(IOldResult.OldError)}' or '{typeof(IOldResult.OldSuccess)}'.");
 			}
 		}
 	}
@@ -61,16 +61,16 @@ public class Results {
 	[Fact]
 	public void AllValueResultNestedClassesImplementErrorOrSuccess() {
 
-		foreach (Type containingResultInterface in GameMakerAssembly.GetInterfaces().Where(x => x.Implements(typeof(IResult<>)))) {
+		foreach (Type containingResultInterface in GameMakerAssembly.GetInterfaces().Where(x => x.Implements(typeof(IOldResult<>)))) {
 
 			foreach (Type resultOption in containingResultInterface.GetNestedClasses()) {
 
 				Type resultInterface =
-					resultOption.GetInterfaces().FirstOrDefault(x => x.IsDirectlyAssignableTo(typeof(IResult<>)))
+					resultOption.GetInterfaces().FirstOrDefault(x => x.IsDirectlyAssignableTo(typeof(IOldResult<>)))
 					?? throw new($"The type '{resultOption}' is nested within a result interface but does not implement that result interface.");
 
-				Type successType = resultInterface.GetNestedClasses().First(x => x.IsDirectlyAssignableTo(typeof(IResult<>.Success)));
-				Type errorType = resultInterface.GetNestedClasses().First(x => x.IsDirectlyAssignableTo(typeof(IResult<>.Error)));
+				Type successType = resultInterface.GetNestedClasses().First(x => x.IsDirectlyAssignableTo(typeof(IOldResult<>.OldSuccess)));
+				Type errorType = resultInterface.GetNestedClasses().First(x => x.IsDirectlyAssignableTo(typeof(IOldResult<>.OldError)));
 
 				Assert.True(resultOption.Inherits(successType) || resultOption.Inherits(errorType),
 					$"The type '{resultOption}' is nested within a result interface but does not inherit from " +
