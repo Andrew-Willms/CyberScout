@@ -19,7 +19,7 @@ public record EditGraph {
 
 	public MatchDataDto? OriginalMatch { get; init; }
 
-	public required ReadOnlyList<SubGraph> Graphs { get; init; }
+	public required ReadOnlyList<SubGraph> SubGraphs { get; init; }
 
 
 
@@ -85,7 +85,7 @@ public record EditGraph {
 			OriginalDeviceId = originalDeviceId,
 			OriginalMatchId = originalMatchId,
 			OriginalMatch = originalMatch,
-			Graphs = graphs.ToReadOnly()
+			SubGraphs = graphs.ToReadOnly()
 		};
 	}
 
@@ -115,8 +115,16 @@ public record SubGraph {
 		Children = ReadOnlyDictionary<MatchDataDto, MatchDataDto>.Empty;
 	}
 
-	public bool TryAdd(MatchDataDto node, [NotNullWhen(true)] out SubGraph? newGraph) {
-		throw new NotImplementedException();
+	public bool TryAdd(MatchDataDto nodeToAdd, [NotNullWhen(true)] out SubGraph? newGraph) {
+
+		foreach ((string deviceId, long matchdId) parent in nodeToAdd.Parents) {
+
+			foreach (MatchDataDto existingNode in Nodes) {
+				
+			}
+
+		}
+
 	}
 
 }

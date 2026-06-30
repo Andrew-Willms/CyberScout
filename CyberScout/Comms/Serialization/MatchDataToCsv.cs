@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using Domain.Data;
 using Domain.GameSpecification;
-using OneOf;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.MiscExtensions;
 using UtilitiesLibrary.Optional;
@@ -15,8 +14,7 @@ namespace Comms.Serialization;
 
 
 
-[GenerateOneOf]
-public partial record MatchDataDeserializationResult : AsyncTryResult<MatchData, MatchDataDeserializationError> {
+public record MatchDataDeserializationResult : AsyncTryResult<MatchData, MatchDataDeserializationError> {
 
 	public MatchDataDeserializationResult(MatchData value) : base(value) { }
 

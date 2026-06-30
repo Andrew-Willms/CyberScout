@@ -10,6 +10,10 @@ public record GetRangeResult : AsyncTryResult<IndexRange, GetRangeError> {
 
 	public GetRangeResult(GetRangeError error) : base(error) { }
 
+	public static implicit operator GetRangeResult(IndexRange value) {
+		return new(value);
+	}
+
 	public static implicit operator GetRangeResult(GetRangeError error) {
 		return new(error);
 	}
