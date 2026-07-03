@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using UtilitiesLibrary.Collections;
+using UtilitiesLibrary.Results;
 
 namespace Database.Sqlite;
 
@@ -66,6 +67,7 @@ public record MatchIndexMetaData : RecordMetaData  {
 
 
 
+// TODO consider allowing zero length ranges... this might be helpful for functions like IndexRange.RangeBefore etc.
 public record IndexRange {
 
 	public string DeviceId { get; }
@@ -83,13 +85,15 @@ public record IndexRange {
 		MetaData = metaData;
 	}
 
-	public static IndexRange? Create(string deviceId, long start, long end, RecordMetaData metaData) {
+	public static Result<IndexRange> Create(string deviceId, long start, long end, RecordMetaData metaData) {
 
 		if (start > end) {
-			return null;
+			return new AdHocError(("start", start.ToString()), ("end", end.ToString())) {
+				Message = "Start index after end index."
+			};
 		}
 
-		return new(deviceId, start, end, metaData);
+		return new IndexRange(deviceId, start, end, metaData);
 	}
 
 	public bool Contains(long index) {
@@ -114,15 +118,15 @@ public record SuperRange {
 		Ranges = ranges;
 	}
 
-	public static SuperRange? Create(List<IndexRange> ranges) {
+	public static Result<SuperRange> Create(List<IndexRange> ranges) {
 
 		if (ranges.IsEmpty()) {
-			return null;
+			return new AdHocError("List or ranges is empty.");
 		}
 
 		string deviceId = ranges.First().DeviceId;
 		if (ranges.Any(range => range.DeviceId == deviceId)) {
-			return null;
+			return new AdHocError("Not all deviceIds match", ranges.Select((range, index) => (index.ToString(), range.ToString())).ToList());
 		}
 
 		long previousEnd = ranges.First().Start - 1;
@@ -137,7 +141,7 @@ public record SuperRange {
 		}
 
 		ReadOnlyList<IndexRange> checkedRanges = ranges.ToReadOnly();
-		return new(deviceId, checkedRanges);
+		return new SuperRange(deviceId, checkedRanges);
 	}
 
 
@@ -146,10 +150,14 @@ public record SuperRange {
 		return Ranges.First().Start <= index && index <= Ranges.Last().End;
 	}
 
-	public SuperRange? OverwriteRangeAndSimplify(long indexToOverwrite, RecordMetaData newMetaData) {
+	public Result<SuperRange> OverwriteRangeAndSimplify(long indexToOverwrite, RecordMetaData newMetaData) {
 
 		if (!Contains(indexToOverwrite)) {
-			return null;
+			return new AdHocError(
+				"The SuperRange does not contain the index to overwrite",
+				("indexToOverwrite", indexToOverwrite.ToString()), 
+				("super range start", Ranges.First().Start.ToString()),
+				("super range end", Ranges.Last().End.ToString()));
 		}
 
 		List<IndexRange> newRanges = new(Ranges.Count + 2);
@@ -160,39 +168,60 @@ public record SuperRange {
 				continue;
 			}
 
-			IndexRange newRange = IndexRange.Create(DeviceId, indexToOverwrite, indexToOverwrite, newMetaData) ?? throw new UnreachableException();
+			Result<IndexRange> newRangeResult = IndexRange.Create(DeviceId, indexToOverwrite, indexToOverwrite, newMetaData) ?? throw new UnreachableException();
+			if (newRangeResult.IsFailure) {
+				return new AdHocError("Error creating range", newRangeResult.Error);
+			}
+			IndexRange newRange = newRangeResult.Value;
 
 			if (range.Start == indexToOverwrite && range.End == indexToOverwrite) {
 				newRanges.Add(newRange);
 				continue;
 			}
 
+			// TODO consider function like IndexRange.RangeAfter(indexToSplit)
 			if (range.Start == indexToOverwrite) {
 				newRanges.Add(newRange);
-				newRanges.Add(IndexRange.Create(DeviceId, indexToOverwrite + 1, range.End, range.MetaData) ?? throw new UnreachableException());
+				newRanges.Add(IndexRange.Create(DeviceId, indexToOverwrite + 1, range.End, range.MetaData).Value ?? throw new UnreachableException());
 				continue;
 			}
 
+			// TODO consider function like IndexRange.RangeBefore(indexToSplit)
 			if (range.End == indexToOverwrite) {
-				newRanges.Add(IndexRange.Create(DeviceId, range.Start, indexToOverwrite - 1, range.MetaData) ?? throw new UnreachableException());
+				newRanges.Add(IndexRange.Create(DeviceId, range.Start, indexToOverwrite - 1, range.MetaData).Value ?? throw new UnreachableException());
 				newRanges.Add(newRange);
 				continue;
 			}
 
-			newRanges.Add(IndexRange.Create(DeviceId, range.Start, indexToOverwrite - 1, range.MetaData) ?? throw new UnreachableException());
+			// TODO see above
+			newRanges.Add(IndexRange.Create(DeviceId, range.Start, indexToOverwrite - 1, range.MetaData).Value ?? throw new UnreachableException());
 			newRanges.Add(newRange);
-			newRanges.Add(IndexRange.Create(DeviceId, indexToOverwrite + 1, range.End, range.MetaData) ?? throw new UnreachableException());
+			newRanges.Add(IndexRange.Create(DeviceId, indexToOverwrite + 1, range.End, range.MetaData).Value ?? throw new UnreachableException());
 		}
 
-		SuperRange newSuperRangeUnsimplified = Create(newRanges) ?? throw new UnreachableException();
+		Result<SuperRange> newSuperRangeUnsimplified = Create(newRanges);
+		if (newSuperRangeUnsimplified.IsFailure) {
+			return new AdHocError("Error creating SuperRange", newSuperRangeUnsimplified.Error);
+		}
 
-		return newSuperRangeUnsimplified.Simplify();
+		return newSuperRangeUnsimplified.Value.Simplify();
 	}
 
-	public SuperRange? OverwriteRangeAndSimplify(IndexRange rangeToOverwrite, RecordMetaData newMetaData) {
+	public Result<SuperRange> OverwriteRangeAndSimplify(IndexRange rangeToOverwrite, RecordMetaData newMetaData) {
+
+		if (rangeToOverwrite.DeviceId != DeviceId) {
+			return new AdHocError(
+				"The range to overwrite has a different deviceId than this SuperRange",
+				("range DeviceId", rangeToOverwrite.DeviceId),
+				("SuperRange DeviceId", DeviceId));
+		}
 
 		if (!Ranges.Contains(rangeToOverwrite)) {
-			return null;
+			return new AdHocError(
+				"The SuperRange does not contain the index to overwrite",
+				("rangeToOverwrite", rangeToOverwrite.ToString()),
+				("super range start", Ranges.First().Start.ToString()),
+				("super range end", Ranges.Last().End.ToString()));
 		}
 
 		List<IndexRange> newRanges = new(Ranges.Count + 2);
@@ -203,12 +232,17 @@ public record SuperRange {
 				continue;
 			}
 
-			IndexRange newRange = IndexRange.Create(DeviceId, range.Start, range.End, newMetaData) ?? throw new UnreachableException();
+			// TODO consider functions like IndexRange.WithNewMetaData(metaData)
+			IndexRange newRange = IndexRange.Create(DeviceId, range.Start, range.End, newMetaData).Value ?? throw new UnreachableException();
 			newRanges.Add(newRange);
 		}
 
-		SuperRange newSuperRangeUnsimplified = Create(newRanges) ?? throw new UnreachableException();
-		return newSuperRangeUnsimplified.Simplify();
+		Result<SuperRange> newSuperRangeUnsimplified = Create(newRanges);
+		if (newSuperRangeUnsimplified.IsFailure) {
+			return new AdHocError("Error creating SuperRange", newSuperRangeUnsimplified.Error);
+		}
+
+		return newSuperRangeUnsimplified.Value.Simplify();
 	}
 
 	public SuperRange Simplify() {

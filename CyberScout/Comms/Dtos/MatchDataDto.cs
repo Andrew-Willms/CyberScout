@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Domain.Data;
 using OneOf;
+using UtilitiesLibrary.Results;
 using Willmsy.AsyncTryResult;
 
 namespace Comms.Dtos;
@@ -176,10 +177,20 @@ public partial class CreateMatchDataDtoError : OneOfBase<
 	OriginalMatchHasParentsError,
 	EditedMatchHasNoParentsError,
 	MatchNotAfterParentMatchError,
-	ParentMatchBeforeOriginalMatchError
->;
+	ParentMatchBeforeOriginalMatchError> {
 
-public readonly record struct MatchBeforeOriginalMatchError {
+	public static implicit operator Error(CreateMatchDataDtoError error) {
+		return error.Match<Error>(
+			error1 => error1,
+			error2 => error2,
+			error3 => error3,
+			error4 => error4,
+			error5 => error5);
+	}
+
+}
+
+public record MatchBeforeOriginalMatchError : Error {
 
 	public required string DeviceId { get; init; }
 
@@ -199,13 +210,13 @@ public readonly record struct MatchBeforeOriginalMatchError {
 
 }
 
-public record OriginalMatchHasParentsError;
+public record OriginalMatchHasParentsError : Error;
 
-public record EditedMatchHasNoParentsError;
+public record EditedMatchHasNoParentsError : Error;
 
-public record MatchNotAfterParentMatchError;
+public record MatchNotAfterParentMatchError : Error;
 
-public record ParentMatchBeforeOriginalMatchError;
+public record ParentMatchBeforeOriginalMatchError : Error;
 
 
 
@@ -236,9 +247,16 @@ public record ParentsFromTextResult : AsyncTryResult<List<(string deviceId, long
 [GenerateOneOf]
 public partial class ParentsFromTextError : OneOfBase<
 	NoCommaInParentTextError,
-	CoundNotParseMatchIndexError
->;
+	CoundNotParseMatchIndexError> {
 
-public record NoCommaInParentTextError(string ParentsText);
+	public static implicit operator Error(ParentsFromTextError error) {
+		return error.Match<Error>(
+			error1 => error1,
+			error2 => error2);
+	}
 
-public record CoundNotParseMatchIndexError(string ParentsText);
+}
+
+public record NoCommaInParentTextError(string ParentsText) : Error;
+
+public record CoundNotParseMatchIndexError(string ParentsText) : Error;

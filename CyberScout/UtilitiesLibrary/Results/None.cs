@@ -1,4 +1,4 @@
-﻿namespace SqliteUtilities;
+﻿namespace UtilitiesLibrary.Results;
 
 
 

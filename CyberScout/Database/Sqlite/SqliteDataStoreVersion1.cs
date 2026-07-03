@@ -1,13 +1,10 @@
 ﻿using Comms.Dtos;
 using Comms.Serialization;
 using Database.Results;
-using Database.Results.Event;
-using Database.Results.GameSpec;
-using Database.Results.MatchData;
-using Database.Results.Scout;
-using Database.Sqlite.Indexer;
+using Domain.GameSpecification;
 using Microsoft.Data.Sqlite;
 using SqliteUtilities;
+using UtilitiesLibrary.Results;
 
 namespace Database.Sqlite;
 
@@ -15,17 +12,24 @@ namespace Database.Sqlite;
 
 public class SqliteDataStoreVersion1Creator : IDataStoreCreator {
 
-	public async Task<IDataStore?> Create(string settings) {
+	public async Task<Result<IDataStore>> Create(string settings) {
 
-		return await SqliteDataStoreVersion1.Initialize(settings);
+		Result<SqliteDataStoreVersion1> result = await SqliteDataStoreVersion1.Initialize(settings);
+
+		if (result.IsFailure) {
+			return new AdHocError("Error creating database.", result.Error);
+		}
+
+		return result.Value;
 	}
+
 }
 
 
 
 public class SqliteDataStoreVersion1 : IDataStore {
 
-	private const uint TargetDatabaseVersion = 1;
+	private const long Version = 1;
 
 	private readonly SqliteConnection Connection;
 
@@ -38,52 +42,54 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		Indexer = new(connection);
 	}
 
-	public static async Task<SqliteDataStoreVersion1?> Initialize(string dbPath) {
+	public static async Task<Result<SqliteDataStoreVersion1>> Initialize(string dbPath) {
 
-		// TODO: add real errors
-
-		SqliteConnection connection;
-		try {
-			connection = new($"Data Source={dbPath}");
-			connection.Open();
-		} catch {
-			return null;
+		SqliteConnection connection = new($"Data Source={dbPath}");
+		OpenConnectionResult openConnectionResult = await connection.SafeOpen();
+		if (openConnectionResult.IsFailure) {
+			return new AdHocError("Error connecting to database.", openConnectionResult.Error);
 		}
 
-		bool? isEmpty = await DatabaseChecks.IsEmpty(connection);
-		if (isEmpty is null) {
-			return null;
+		ValueResult<bool> isEmptyResult = await DatabaseChecks.IsEmpty(connection);
+		if (isEmptyResult.IsFailure) {
+			return new AdHocError("Error checking if the database is empty.");
 		}
+		bool databaseIsEmpty = isEmptyResult.Value;
 
-		if (isEmpty is true && (await Create(connection)).IsFailure) {
-			return null;
-		}
+		if (databaseIsEmpty) {
 
-		uint? existingDatabaseVersion = await DatabaseChecks.GetDatabaseVersion(connection);
-		if (existingDatabaseVersion != TargetDatabaseVersion) {
-			return null;
+			Result createResult = await Create(connection);
+			if (createResult.IsFailure) {
+				return new AdHocError("Error creating database.", createResult.Error);
+			}
 		}
 
 		// For database version X (where X > 1) you would have something like:
-		// if (existingDatabaseVersion is null) {
-		//     return null;
-		// } else if (existingDatabaseVersion < TargetDatabaseVersion) {
-		//     await SqliteDataStoreVersion[X-1].Initialize(connection);
-		// } else if (existingDatabaseVersion != TargetDatabaseVersion) {
-		//     return null;
-		// }
+		//ValueResult<long> versionResult = await DatabaseChecks.GetDatabaseVersion(connection);
+		//if (versionResult.IsFailure) {
+		//	return new AdHocError("Error getting database version.");
+		//}
+		//
+		//if (versionResult.Value < Version) {
+		//
+		//	// Replace SqliteDataStoreVersion1 with whatever the previous database version is.
+		//	Result<SqliteDataStoreVersion[X - 1]> previousVersionResult = await SqliteDataStoreVersion[X - 1].Initialize(connection);
+		//	if (previousVersionResult.IsFailure) {
+		//		return new AdHocError("Error creating previous database version.", previousVersionResult.Error);
+		//	}
+		//}
 
-		bool? valid = await CheckIntegrity(connection);
-		if (valid != true) {
-			return null;
+		Result integrityCheckResult = await CheckIntegrity(connection);
+		if (integrityCheckResult.IsFailure) {
+			return new AdHocError("Database failed integrity check.", integrityCheckResult.Error);
 		}
 
-		return new(connection);
+		return new SqliteDataStoreVersion1(connection);
 	}
 
-	private static async Task<CreateTableResult> Create(SqliteConnection connection) {
+	private static async Task<Result> Create(SqliteConnection connection) {
 
-		CreateTableResult result = await CreateDatabaseVersionTable(connection);
+		Result result = await CreateDatabaseVersionTable(connection);
 		if (result.IsFailure) {
 			return result;
 		}
@@ -146,7 +152,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return await CreateMatchDataTable(connection);
 	}
 
-	private static async Task<CreateTableResult> CreateDatabaseVersionTable(SqliteConnection connection) {
+	private static async Task<Result> CreateDatabaseVersionTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -155,7 +161,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 );
 
 			 INSERT INTO "{nameof(Tables.DatabaseVersion)}" ("{Tables.DatabaseVersion.Version}")
-			 VALUES ({TargetDatabaseVersion});
+			 VALUES ({Version});
 
 			 CREATE TRIGGER IF NOT EXISTS "block_inserts_on_{nameof(Tables.DatabaseVersion)}"
 			 BEFORE INSERT ON "{nameof(Tables.DatabaseVersion)}"
@@ -171,10 +177,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		return await command.ExecuteNonQueryAndExpect(0);
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
+		if (result.IsFailure) {
+			return new AdHocError("Error adding DatabaseVersion table.", result.Error);
+		}
+
+		return Result.Success;
 	}
 
-	private static async Task<CreateTableResult> CreateScoutTable(SqliteConnection connection) {
+	private static async Task<Result> CreateScoutTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -199,10 +210,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		return await command.ExecuteNonQueryAndExpect(0);
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
+		if (result.IsFailure) {
+			return new AdHocError("Error adding Scout table.", result.Error);
+		}
+
+		return Result.Success;
 	}
 
-	private static async Task<CreateTableResult> CreateKnownDevicesTable(SqliteConnection connection) {
+	private static async Task<Result> CreateKnownDevicesTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -220,10 +236,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		return await command.ExecuteNonQueryAndExpect(0);
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
+		if (result.IsFailure) {
+			return new AdHocError("Error adding KnownDevices table.", result.Error);
+		}
+
+		return Result.Success;
 	}
 
-	private static async Task<CreateTableResult> CreateGameIdSequenceTable(SqliteConnection connection) {
+	private static async Task<Result> CreateGameIdSequenceTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -248,10 +269,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		return await command.ExecuteNonQueryAndExpect(0);
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
+		if (result.IsFailure) {
+			return new AdHocError("Error adding GamesIdSequence table.", result.Error);
+		}
+
+		return Result.Success;
 	}
 
-	private static async Task<CreateTableResult> CreateGameIndexTable(SqliteConnection connection) {
+	private static async Task<Result> CreateGameIndexTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -293,10 +319,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		return await command.ExecuteNonQueryAndExpect(0);
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
+		if (result.IsFailure) {
+			return new AdHocError("Error adding GamesIndex table.", result.Error);
+		}
+
+		return Result.Success;
 	}
 
-	private static async Task<CreateTableResult> CreateGamesTable(SqliteConnection connection) {
+	private static async Task<Result> CreateGamesTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -325,10 +356,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		return await command.ExecuteNonQueryAndExpect(0);
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
+		if (result.IsFailure) {
+			return new AdHocError("Error adding Games table.", result.Error);
+		}
+
+		return Result.Success;
 	}
 
-	private static async Task<CreateTableResult> CreateEventIdSequenceTable(SqliteConnection connection) {
+	private static async Task<Result> CreateEventIdSequenceTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -353,10 +389,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		return await command.ExecuteNonQueryAndExpect(0);
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
+		if (result.IsFailure) {
+			return new AdHocError("Error adding EventIdSequence table.", result.Error);
+		}
+
+		return Result.Success;
 	}
 
-	private static async Task<CreateTableResult> CreateEventIndexTable(SqliteConnection connection) {
+	private static async Task<Result> CreateEventIndexTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -398,10 +439,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		return await command.ExecuteNonQueryAndExpect(0);
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
+		if (result.IsFailure) {
+			return new AdHocError("Error adding EventIndex table.", result.Error);
+		}
+
+		return Result.Success;
 	}
 
-	private static async Task<CreateTableResult> CreateEventMetaDataTable(SqliteConnection connection) {
+	private static async Task<Result> CreateEventMetaDataTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -433,10 +479,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		return await command.ExecuteNonQueryAndExpect(0);
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
+		if (result.IsFailure) {
+			return new AdHocError("Error adding EventMetaData table.", result.Error);
+		}
+
+		return Result.Success;
 	}
 
-	private static async Task<CreateTableResult> CreateEventDataTable(SqliteConnection connection) {
+	private static async Task<Result> CreateEventDataTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -453,10 +504,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		return await command.ExecuteNonQueryAndExpect(0);
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
+		if (result.IsFailure) {
+			return new AdHocError("Error adding EventData table.", result.Error);
+		}
+
+		return Result.Success;
 	}
 
-	private static async Task<CreateTableResult> CreateMatchIdSequenceTable(SqliteConnection connection) {
+	private static async Task<Result> CreateMatchIdSequenceTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -481,10 +537,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		return await command.ExecuteNonQueryAndExpect(0);
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
+		if (result.IsFailure) {
+			return new AdHocError("Error adding MatchIdSequence table.", result.Error);
+		}
+
+		return Result.Success;
 	}
 
-	private static async Task<CreateTableResult> CreateMatchIndexTable(SqliteConnection connection) {
+	private static async Task<Result> CreateMatchIndexTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -539,10 +600,15 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		return await command.ExecuteNonQueryAndExpect(0);
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
+		if (result.IsFailure) {
+			return new AdHocError("Error adding MatchDataIndex table.", result.Error);
+		}
+
+		return Result.Success;
 	}
 
-	private static async Task<CreateTableResult> CreateMatchDataTable(SqliteConnection connection) {
+	private static async Task<Result> CreateMatchDataTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
@@ -604,52 +670,57 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			connection);
 
-		return await command.ExecuteNonQueryAndExpect(0);
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
+		if (result.IsFailure) {
+			return new AdHocError("Error adding MatchData table.", result.Error);
+		}
+
+		return Result.Success;
 	}
 
-	public static Task<bool> CheckIntegrity(SqliteConnection connection) {
+	public static Task<Result> CheckIntegrity(SqliteConnection connection) {
 		throw new NotImplementedException();
 	}
 
 
 
-	public Task<GetGameSpecsResult> GetGameSpecs() {
+	public Task<Result<List<GameSpec>>> GetGameSpecs() {
 		throw new NotImplementedException();
 	}
 
-	public Task<AddNewGameSpecResult> AddNewGameSpec() {
+	public Task<Result> AddNewGameSpec() {
 		throw new NotImplementedException();
 	}
 
-	public Task<ImportGameSpecResult> ImportGameSpec() {
+	public Task<Result> ImportGameSpec() {
 		throw new NotImplementedException();
 	}
 
-	public Task<DeleteGameSpecResult> DeleteGameSpec() {
-		throw new NotImplementedException();
-	}
-
-
-
-	public Task<GetEventsResult> GetEvents() {
-		throw new NotImplementedException();
-	}
-
-	public Task<AddNewEventResult> AddNewEvent() {
-		throw new NotImplementedException();
-	}
-
-	public Task<ImportEventResult> ImportEvent() {
-		throw new NotImplementedException();
-	}
-
-	public Task<DeleteEventResult> DeleteEvent() {
+	public Task<Result> DeleteGameSpec() {
 		throw new NotImplementedException();
 	}
 
 
 
-	public async Task<GetMatchDataResult> GetMatchDataFromGame(GameDto gameDto) {
+	public Task<Result<List<EventSchedule>>> GetEvents() {
+		throw new NotImplementedException();
+	}
+
+	public Task<Result> AddNewEvent() {
+		throw new NotImplementedException();
+	}
+
+	public Task<Result> ImportEvent() {
+		throw new NotImplementedException();
+	}
+
+	public Task<Result> DeleteEvent() {
+		throw new NotImplementedException();
+	}
+
+
+
+	public async Task<Result<List<EditGraph>>> GetMatchDataFromGame(GameDto gameDto) {
 
 		SqliteCommand getMatchData = new(
 			$"""
@@ -662,92 +733,91 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		getMatchData.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = gameDto.DeviceId });
 		getMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = gameDto.GameId });
 
-		SqliteDataReader reader;
-		try {
-			reader = await getMatchData.ExecuteReaderAsync();
-		} catch (Exception exception) {
-			return new ReadDataError(ExceptionError.FromException(exception, getMatchData));
+		ReaderResult readerResult = await getMatchData.SafeExecuteReader();
+		if (readerResult.IsFailure) {
+			return new AdHocError("Error executing readers.", readerResult.Error);
 		}
+		SqliteDataReader reader = readerResult.Value;
 
 		List<MatchDataDto> allMatchDtos = [];
 		while (reader.Read()) {
 
-			SafeGetTextResult deviceIdResult = reader.SafeGetText(Tables.MatchData.DeviceId);
+			GetTextResult deviceIdResult = reader.SafeGetText(Tables.MatchData.DeviceId);
 			if (deviceIdResult.IsFailure) {
-				return new ColumnReadError(Tables.MatchData.DeviceId, deviceIdResult.Error);
+				return new AdHocError(Tables.MatchData.DeviceId, deviceIdResult.Error);
 			}
 			string deviceId = deviceIdResult.Value;
 
-			SafeGetIntegerResult matchIdResult = reader.SafeGetInteger(Tables.MatchData.MatchId);
+			GetIntegerResult matchIdResult = reader.SafeGetInteger(Tables.MatchData.MatchId);
 			if (matchIdResult.IsFailure) {
-				return new ColumnReadError(Tables.MatchData.MatchId, matchIdResult.Error);
+				return new AdHocError(Tables.MatchData.MatchId, matchIdResult.Error);
 			}
 			long matchId = matchIdResult.Value;
 
-			SafeGetTextResult originalDeviceIdResult = reader.SafeGetText(Tables.MatchData.OriginalDeviceId);
+			GetTextResult originalDeviceIdResult = reader.SafeGetText(Tables.MatchData.OriginalDeviceId);
 			if (originalDeviceIdResult.IsFailure) {
-				return new ColumnReadError(Tables.MatchData.OriginalDeviceId, originalDeviceIdResult.Error);
+				return new AdHocError(Tables.MatchData.OriginalDeviceId, originalDeviceIdResult.Error);
 			}
 			string originalDeviceId = deviceIdResult.Value;
 
-			SafeGetIntegerResult originalMatchIdResult = reader.SafeGetInteger(Tables.MatchData.OriginalMatchId);
+			GetIntegerResult originalMatchIdResult = reader.SafeGetInteger(Tables.MatchData.OriginalMatchId);
 			if (originalMatchIdResult.IsFailure) {
-				return new ColumnReadError(Tables.MatchData.OriginalMatchId, originalMatchIdResult.Error);
+				return new AdHocError(Tables.MatchData.OriginalMatchId, originalMatchIdResult.Error);
 			}
 			long originalMatchId = matchIdResult.Value;
 
-			SafeGetNullableTextResult parentsRawResult = reader.SafeGetNullableText(Tables.MatchData.ParentsAsText);
+			GetNullableTextResult parentsRawResult = reader.SafeGetNullableText(Tables.MatchData.ParentsAsText);
 			if (parentsRawResult.IsFailure) {
-				return new NullableColumnReadError(Tables.MatchData.ParentsAsText, parentsRawResult.Error);
+				return new AdHocError(Tables.MatchData.ParentsAsText, parentsRawResult.Error);
 			}
 			string parentsRaw = parentsRawResult.Value.Value.IsT0 ? parentsRawResult.Value.Value.AsT0 : string.Empty;
 
 			ParentsFromTextResult parentListResult = MatchDataDto.ParentsFromText(parentsRaw);
 			if (parentListResult.IsFailure) {
-				return parentListResult.Error;
+				return new AdHocError("Error getting parents from text.", parentListResult.Error);
 			}
 			List<(string deviceId, long matchdId)> parents = parentListResult.Value;
 
-			SafeGetTextResult gameDeviceIdResult = reader.SafeGetText(Tables.MatchData.GameDeviceId);
+			GetTextResult gameDeviceIdResult = reader.SafeGetText(Tables.MatchData.GameDeviceId);
 			if (gameDeviceIdResult.IsFailure) {
-				return new ColumnReadError(Tables.MatchData.GameDeviceId, gameDeviceIdResult.Error);
+				return new AdHocError(Tables.MatchData.GameDeviceId, gameDeviceIdResult.Error);
 			}
 			string gameDeviceId = gameDeviceIdResult.Value;
 
-			SafeGetIntegerResult gameIdResult = reader.SafeGetInteger(Tables.MatchData.GameId);
+			GetIntegerResult gameIdResult = reader.SafeGetInteger(Tables.MatchData.GameId);
 			if (gameIdResult.IsFailure) {
-				return new ColumnReadError(Tables.MatchData.GameId, gameIdResult.Error);
+				return new AdHocError(Tables.MatchData.GameId, gameIdResult.Error);
 			}
 			long gameId = gameIdResult.Value;
 
-			SafeGetTextResult eventDeviceIdResult = reader.SafeGetText(Tables.MatchData.EventDeviceId);
+			GetTextResult eventDeviceIdResult = reader.SafeGetText(Tables.MatchData.EventDeviceId);
 			if (eventDeviceIdResult.IsFailure) {
-				return new ColumnReadError(Tables.MatchData.EventDeviceId, eventDeviceIdResult.Error);
+				return new AdHocError(Tables.MatchData.EventDeviceId, eventDeviceIdResult.Error);
 			}
 			string eventDeviceId = eventDeviceIdResult.Value;
 
-			SafeGetIntegerResult eventMetaDataIdResult = reader.SafeGetInteger(Tables.MatchData.EventMetaDataId);
+			GetIntegerResult eventMetaDataIdResult = reader.SafeGetInteger(Tables.MatchData.EventMetaDataId);
 			if (eventMetaDataIdResult.IsFailure) {
-				return new ColumnReadError(Tables.MatchData.EventMetaDataId, eventMetaDataIdResult.Error);
+				return new AdHocError(Tables.MatchData.EventMetaDataId, eventMetaDataIdResult.Error);
 			}
 			long eventMetaDataId = gameIdResult.Value;
 
-			SafeGetTextResult dataResult = reader.SafeGetText(Tables.MatchData.Data);
+			GetTextResult dataResult = reader.SafeGetText(Tables.MatchData.Data);
 			if (dataResult.IsFailure) {
-				return new ColumnReadError(Tables.MatchData.Data, dataResult.Error);
+				return new AdHocError(Tables.MatchData.Data, dataResult.Error);
 			}
 			string serializedData = dataResult.Value;
 
 			MatchDataDeserializationResult deserializationResult = MatchDataToCsv.Deserialize(serializedData, gameDto.Specification);
 			if (deserializationResult.IsFailure) {
-				return deserializationResult.Error;
+				return new AdHocError("Error deserializing match data.", deserializationResult.Error);
 			}
 
 			CreateMatchDataDtoResult result = MatchDataDto.Create(deserializationResult.Value, deviceId, matchId, originalDeviceId, originalMatchId, parents, gameDeviceId,
 				gameId, eventDeviceId, eventMetaDataId);
 
 			if (result.IsFailure) {
-				return result.Error;
+				return new AdHocError("Error creating matchDataDto.", result.Error);
 			}
 
 			allMatchDtos.Add(result.Value);
@@ -772,7 +842,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return editGraphs;
 	}
 
-	public async Task<AddNewMatchDataResult> AddNewMatchData(NewMatchDataDto newMatchDataDto) {
+	public async Task<Result> AddNewMatchData(NewMatchDataDto newMatchDataDto) {
 
 		// -------- Open Transaction --------
 		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
@@ -863,7 +933,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return Success.Instance;
 	}
 
-	public async Task<AddNewEditedMatchDataResult> AddNewEditedMatchData(NewEditedMatchDataDto newEditedMatchDataDto) {
+	public async Task<Result> AddNewEditedMatchData(NewEditedMatchDataDto newEditedMatchDataDto) {
 
 		// -------- Open Transaction --------
 		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
@@ -957,7 +1027,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return Success.Instance;
 	}
 
-	public async Task<ImportMatchDataResult> ImportMatchData(MatchDataDto importMatchDataDto) {
+	public async Task<Result> ImportMatchData(MatchDataDto importMatchDataDto) {
 
 		// -------- Open Transaction --------
 		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
@@ -1021,7 +1091,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return Success.Instance;
 	}
 
-	public async Task<DeleteMatchDataResult> DeleteMatchData(MatchDataDto matchDataToDelete) {
+	public async Task<Result> DeleteMatchData(MatchDataDto matchDataToDelete) {
 
 		// -------- Open Transaction --------
 		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
@@ -1062,7 +1132,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return Success.Instance;
 	}
 
-	public async Task<BulkDeleteMatchDataResult> DeleteMatchDataFromEvent(EventDto eventDto) {
+	public async Task<Result> DeleteMatchDataFromEvent(EventDto eventDto) {
 
 		// -------- Open Transaction --------
 		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
@@ -1103,7 +1173,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return Success.Instance;
 	}
 
-	public async Task<BulkDeleteMatchDataResult> DeleteMatchDataFromGame(GameDto gameDto) {
+	public async Task<Result> DeleteMatchDataFromGame(GameDto gameDto) {
 
 		// -------- Open Transaction --------
 		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
@@ -1144,7 +1214,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return new Success();
 	}
 
-	public async Task<BulkDeleteMatchDataResult> DeleteAllMatchData() {
+	public async Task<Result> DeleteAllMatchData() {
 
 		// -------- Open Transaction --------
 		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
@@ -1154,29 +1224,33 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		// -------- Delete Match Data --------
 		SqliteCommand deleteMatchData = new($"DELETE FROM \"{nameof(Tables.MatchData)}\"", Connection);
+		ExecuteNonQueryAndExpectResult deleteMatchResult = await deleteMatchData.ExecuteNonQueryUnchecked();
+		if (deleteMatchResult.IsFailure) {
+			return await RollbackError.TryRollback(deleteMatchResult.Error, Connection);
+		}
 
 		if (await deleteMatchData.ExecuteNonQueryUnchecked() is ExecuteNonQueryUncheckedError deleteMatchDataError) {
-			return await RollbackError<BulkDeleteDataError>.TryRollback(deleteMatchDataError, Connection);
+			return await RollbackError.TryRollback(deleteMatchDataError, Connection);
 		}
 
 		// -------- Update Record Index Table --------
-		ResetIndexResult deleteResult = await Indexer.ResetMatchIndex();
+		Result deleteResult = await Indexer.ResetMatchIndex();
 		if (deleteResult.IsFailure) {
-			return await RollbackError<ResetIndexError>.TryRollback(deleteResult.Error, Connection);
+			return await RollbackError.TryRollback(deleteResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
 		SqliteCommand commitTransaction = new("COMMIT;", Connection);
 		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError commitError) {
-			return await RollbackError<CommitTransactionError>.TryRollback(commitError, Connection);
+			return await RollbackError.TryRollback(commitError, Connection);
 		}
 
-		return Success.Instance;
+		return Result.Success;
 	}
 
 
 
-	public async Task<GetLastScoutResult> GetLastScout() {
+	public async Task<Result<string>> GetLastScout() {
 
 		SqliteCommand command = new(
 			$"SELECT \"{Tables.Scout.Name}\" FROM \"{nameof(Tables.Scout)}\" WHERE ROWID = 1;",
@@ -1185,13 +1259,13 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		TextScalarResult result = await command.ExecuteTextScalar();
 		if (result.IsFailure) {
-			return result.Error;
+			return new AdHocError("Error getting scout.", result.Error);
 		}
 
 		return result.Value;
 	}
 
-	public async Task<SetLastScoutResult> SetLastScout(string scoutName) {
+	public async Task<Result> SetLastScout(string scoutName) {
 
 		SqliteCommand command = new(
 			$"""
@@ -1203,11 +1277,12 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		command.Parameters.Add(new("@Name", SqliteType.Text) { Value = scoutName });
 
-		if (await command.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError error) {
-			return error;
+		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(1);
+		if (result.IsFailure) {
+			return new AdHocError("Error setting scout.", result.Error);
 		}
 
-		return Success.Instance;
+		return Result.Success;
 	}
 
 }

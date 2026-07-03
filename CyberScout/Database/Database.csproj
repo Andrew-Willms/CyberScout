@@ -14,7 +14,6 @@
 	  <PackageReference Include="OneOf.Extended" Version="3.0.271" />
 	  <PackageReference Include="OneOf.SourceGenerator" Version="3.0.271" />
 	  <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
-	  <PackageReference Include="Willmsy.AsyncTryResult" Version="1.0.1" />
 	</ItemGroup>
 
 	<ItemGroup>

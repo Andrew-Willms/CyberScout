@@ -8,13 +8,13 @@ using Domain.GameSpecification;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.MiscExtensions;
 using UtilitiesLibrary.Optional;
-using Willmsy.AsyncTryResult;
+using UtilitiesLibrary.Results;
 
 namespace Comms.Serialization;
 
 
 
-public record MatchDataDeserializationResult : AsyncTryResult<MatchData, MatchDataDeserializationError> {
+public record MatchDataDeserializationResult : Result<MatchData, MatchDataDeserializationError> {
 
 	public MatchDataDeserializationResult(MatchData value) : base(value) { }
 
@@ -32,7 +32,7 @@ public record MatchDataDeserializationResult : AsyncTryResult<MatchData, MatchDa
 
 // TODO: Consider making this a OneOf<> to enforce exhaustive matching on switch
 // The SerializedMatchData and GameSpecification properties could be moved to an interface?
-public abstract class MatchDataDeserializationError {
+public abstract record MatchDataDeserializationError : Error {
 
 	public required string SerializedMatchData { get; init; }
 
@@ -40,7 +40,7 @@ public abstract class MatchDataDeserializationError {
 
 }
 
-public class WrongNumberOfCsvColumnsError : MatchDataDeserializationError {
+public record WrongNumberOfCsvColumnsError : MatchDataDeserializationError {
 
 	public required uint ExpectedColumnCount { get; init; }
 
@@ -48,14 +48,14 @@ public class WrongNumberOfCsvColumnsError : MatchDataDeserializationError {
 
 }
 
-public class CouldNotParseValuesError : MatchDataDeserializationError {
+public record CouldNotParseValuesError : MatchDataDeserializationError {
 
 	public required ReadOnlyList<CoreValueError> CoreValueErrors { get; init; }
 
 	public required ReadOnlyList<DataFieldError> DataFieldErrors { get; init; }
 }
 
-public class CoreValueError {
+public record CoreValueError {
 
 	public required int ColumnIndex { get; init; }
 
@@ -64,7 +64,7 @@ public class CoreValueError {
 	public required string Text { get; init; }
 }
 
-public class DataFieldError {
+public record DataFieldError {
 
 	public required DataFieldSpec DataField { get; init; }
 

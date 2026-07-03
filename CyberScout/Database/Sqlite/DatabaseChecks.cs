@@ -1,4 +1,6 @@
 ﻿using Microsoft.Data.Sqlite;
+using SqliteUtilities;
+using UtilitiesLibrary.Results;
 
 namespace Database.Sqlite;
 
@@ -9,28 +11,23 @@ public static class DatabaseChecks {
 	private const string VersionTableName = "DatabaseVersion";
 	private const string VersionColumnName = "Version";
 
-	public static async Task<bool?> IsEmpty(SqliteConnection connection) {
-
-		// TODO: add errors
+	public static async Task<ValueResult<bool>> IsEmpty(SqliteConnection connection) {
 
 		SqliteCommand command = new() {
 			CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table';",
 			Connection = connection
 		};
-
-		try {
-			SqliteDataReader reader = await command.ExecuteReaderAsync();
-			int tableCount = reader.GetInt32(0);
-			return tableCount == 0;
-
-		} catch {
-			return null;
+		
+		IntegerScalarResult result = await command.ExecuteIntegerScalar();
+		if (result.IsFailure) {
+			return new AdHocError("Error getting table count.", result.Error);
 		}
+
+		long tableCount = result.Value;
+		return tableCount == 0;
 	}
 
-	public static async Task<uint?> GetDatabaseVersion(SqliteConnection connection) {
-
-		// TODO: add errors
+	public static async Task<ValueResult<long>> GetDatabaseVersion(SqliteConnection connection) {
 
 		// ExecuteScalarAsync() returns the first column of the first row.
 		// Because of this I don't need to specify the column or WHERE.
@@ -40,13 +37,12 @@ public static class DatabaseChecks {
 			connection
 		);
 
-		try {
-			object? result = await command.ExecuteScalarAsync();
-			return result as uint?;
-
-		} catch {
-			return null;
+		IntegerScalarResult result = await command.ExecuteIntegerScalar();
+		if (result.IsFailure) {
+			return new AdHocError("Error getting database version.", result.Error);
 		}
+
+		return result.Value;
 	}
 
 }

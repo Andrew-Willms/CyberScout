@@ -1,9 +1,6 @@
 ﻿using Comms.Dtos;
-using Database.Results.Event;
-using Database.Results.GameSpec;
-using Database.Results.MatchData;
-using Database.Results.Scout;
 using Domain.GameSpecification;
+using UtilitiesLibrary.Results;
 
 namespace Database;
 
@@ -11,7 +8,7 @@ namespace Database;
 
 public interface IDataStoreCreator {
 
-	public Task<IDataStore?> Create(string settings); // TODO make this Result<> instead of nullable
+	public Task<Result<IDataStore>> Create(string settings); // TODO make this Result<> instead of nullable
 
 }
 
@@ -19,47 +16,48 @@ public interface IDataStoreCreator {
 
 public interface IDataStore {
 
-	public Task<GetGameSpecsResult> GetGameSpecs();
+	public Task<Result<List<GameSpec>>> GetGameSpecs();
 	
-	public Task<AddNewGameSpecResult> AddNewGameSpec();
+	public Task<Result> AddNewGameSpec();
 
-	public Task<ImportGameSpecResult> ImportGameSpec();
+	public Task<Result> ImportGameSpec();
 
-	public Task<DeleteGameSpecResult> DeleteGameSpec();
-
-
-
-	public Task<GetEventsResult> GetEvents();
-
-	public Task<AddNewEventResult> AddNewEvent();
-
-	public Task<ImportEventResult> ImportEvent();
-
-	public Task<DeleteEventResult> DeleteEvent();
+	public Task<Result> DeleteGameSpec();
 
 
 
-	public Task<GetMatchDataResult> GetMatchDataFromGame(GameDto gameDto);
+	// TODO Consider changing EventSchedule to EventDto or something
+	public Task<Result<List<EventSchedule>>> GetEvents();
 
-	public Task<AddNewMatchDataResult> AddNewMatchData(NewMatchDataDto newMatchDataDto);
+	public Task<Result> AddNewEvent();
 
-	public Task<AddNewEditedMatchDataResult> AddNewEditedMatchData(NewEditedMatchDataDto newEditedMatchDataDto);
+	public Task<Result> ImportEvent();
 
-	public Task<ImportMatchDataResult> ImportMatchData(MatchDataDto importMatchDataDto);
-
-	public Task<DeleteMatchDataResult> DeleteMatchData(MatchDataDto matchDataToDelete);
-
-	public Task<BulkDeleteMatchDataResult> DeleteMatchDataFromEvent(EventDto eventDto);
-
-	public Task<BulkDeleteMatchDataResult> DeleteMatchDataFromGame(GameDto gameDto);
-
-	public Task<BulkDeleteMatchDataResult> DeleteAllMatchData();
+	public Task<Result> DeleteEvent();
 
 
 
-	public Task<GetLastScoutResult> GetLastScout();
+	public Task<Result<List<EditGraph>>> GetMatchDataFromGame(GameDto gameDto);
 
-	public Task<SetLastScoutResult> SetLastScout(string scoutName);
+	public Task<Result> AddNewMatchData(NewMatchDataDto newMatchDataDto);
+
+	public Task<Result> AddNewEditedMatchData(NewEditedMatchDataDto newEditedMatchDataDto);
+
+	public Task<Result> ImportMatchData(MatchDataDto importMatchDataDto);
+
+	public Task<Result> DeleteMatchData(MatchDataDto matchDataToDelete);
+
+	public Task<Result> DeleteMatchDataFromEvent(EventDto eventDto);
+
+	public Task<Result> DeleteMatchDataFromGame(GameDto gameDto);
+
+	public Task<Result> DeleteAllMatchData();
+
+
+
+	public Task<Result<string>> GetLastScout();
+
+	public Task<Result> SetLastScout(string scoutName);
 
 
 

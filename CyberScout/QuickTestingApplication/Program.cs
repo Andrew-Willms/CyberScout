@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Threading.Tasks;
-using Database.Results.Scout;
-using Database.Sqlite;
-using Domain.Data;
-using Domain.GameSpecification;
+//using Database.Results.Scout;
+//using Database.Sqlite;
+//using Domain.Data;
+//using Domain.GameSpecification;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Optional;
 using UtilitiesLibrary.Results;
@@ -17,6 +17,29 @@ namespace QuickTestingApplication;
 public class Program {
 
 	private static async Task Main(string[] args) {
+
+		Console.WriteLine(TestTypeParameter<TestEnum>());
+	}
+
+	private enum TestEnum {
+		A,
+		B,
+		C
+	}
+
+	private static bool TestTypeParameter<TEnum>() where TEnum : struct, Enum {
+
+		Console.WriteLine(typeof(TEnum));
+
+		if (Enum.IsDefined(typeof(TEnum), 1)) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/*
+	private static async Task TestDatabase() {
 
 		SqliteDataStoreVersion1? dataStore = await SqliteDataStoreVersion1.Initialize("test.db");
 
@@ -141,5 +164,6 @@ public class Program {
 				}.ToReadOnly())!
 
 	];
+	*/
 
 }

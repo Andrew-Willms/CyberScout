@@ -12,6 +12,7 @@ public enum EventDataSources {
 
 
 
+// TODO consider making this capable of storing a list of Device and MetaDataIds
 public record EventDto {
 
 	public required string DeviceId { get; init; }

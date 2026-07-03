@@ -2,6 +2,7 @@
 using Microsoft.Data.Sqlite;
 using OneOf;
 using SqliteUtilities;
+using UtilitiesLibrary.Results;
 
 namespace Database.Results;
 
@@ -117,9 +118,9 @@ public record ReadDataError(ExceptionError Error) {
 
 }
 
-public record ColumnReadError(string ColumnName, SafeGetColumnError Error);
+public record ColumnReadError(string ColumnName, GetColumnError Error);
 
-public record NullableColumnReadError(string ColumnName, SafeGetNullableColumnError Error);
+public record NullableColumnReadError(string ColumnName, GetNullableColumnError Error);
 
 public record CommitTransactionError(ExecuteNonQueryAndExpectError Error) {
 
@@ -128,49 +129,3 @@ public record CommitTransactionError(ExecuteNonQueryAndExpectError Error) {
 	}
 
 }
-
-
-
-
-
-public record RollbackError<TError> {
-
-	public required TError InitialError { get; init; }
-
-	public required ExceptionError? SecondError { get; init; }
-
-	private RollbackError() { }
-
-	/// <summary>
-	/// Creates a <see cref="SqliteCommand"/> that executes <c>ROLLBACK;</c> and attempts to roll back the current transaction.
-	/// </summary>
-	/// <param name="firstError"> The <see cref="DataStoreError"/> that occured, creating the desire to roll back. </param>
-	/// <param name="connection"> The <see cref="SqliteConnection"/> to be used to execute the rollback command. </param>
-	/// <returns>
-	/// A <see cref="DataStoreError"/> representing the original failure if the rollback succeeds.<br/>
-	/// Otherwise, a <see cref="RollbackError"/> containing information about both the original failure and the rollback failure.
-	/// </returns>
-	public static async Task<RollbackError<TError>> TryRollback(TError firstError, SqliteConnection connection) {
-
-		SqliteCommand rollbackCommand = new("ROLLBACK;", connection);
-
-		try {
-			await rollbackCommand.ExecuteNonQueryAsync();
-			return new() {
-				InitialError = firstError,
-				SecondError = null
-			};
-
-		} catch (Exception exception) {
-			return new() {
-				InitialError = firstError,
-				SecondError = ExceptionError.FromException(exception, rollbackCommand)
-			};
-		}
-	}
-
-}
-
-
-
-public record RangeOperationError;
