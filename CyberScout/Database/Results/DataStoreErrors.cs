@@ -68,7 +68,7 @@ public partial class ExceptionError : OneOfBase<SqliteExceptionError, NonSqliteE
 
 public record BeginTransactionError(ExecuteNonQueryAndExpectError Error);
 
-public record GetIdError(IntegerScalarError Error) {
+public record GetIdError(IntegerScalarError Error) : Error {
 
 	public static implicit operator GetIdError(IntegerScalarError error) {
 		return new(error);
@@ -76,7 +76,7 @@ public record GetIdError(IntegerScalarError Error) {
 
 }
 
-public record TableOverflowError;
+public record TableOverflowError : Error;
 
 public record InsertDataResult(ExecuteNonQueryAndExpectError Error) {
 

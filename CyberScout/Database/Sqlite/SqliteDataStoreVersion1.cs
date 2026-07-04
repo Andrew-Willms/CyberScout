@@ -845,9 +845,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 	public async Task<Result> AddNewMatchData(NewMatchDataDto newMatchDataDto) {
 
 		// -------- Open Transaction --------
-		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
-		if (await openTransaction.ExecuteNonQueryAndExpect(0) is ExecuteNonQueryAndExpectError openTransactionError) {
-			return new BeginTransactionError(openTransactionError);
+		SqliteCommand beginTransaction = new("BEGIN TRANSACTION;", Connection);
+		ExecuteNonQueryAndExpectResult beginResult = await beginTransaction.ExecuteNonQueryAndExpect(0);
+		if (beginResult.IsFailure) {
+			return new AdHocError("Error opening transaction", beginResult.Error);
 		}
 
 		// -------- Get MatchId --------
@@ -857,11 +858,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		IntegerScalarResult getMatchIdResult = await getMatchId.ExecuteIntegerScalar();
 		if (getMatchIdResult.IsFailure) {
-			return await RollbackError<GetIdError>.TryRollback(getMatchIdResult.Error, Connection);
+			return await RollbackError.TryRollback(getMatchIdResult.Error, Connection);
 		}
 
 		if (getMatchIdResult.Value == long.MaxValue) {
-			return await RollbackError<TableOverflowError>.TryRollback(new(), Connection);
+			return await RollbackError.TryRollback(new TableOverflowError(), Connection);
 		}
 
 		long nextMatchId = getMatchIdResult.Value + 1;
@@ -899,7 +900,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		addMatchData.Parameters.Add(new("@Data", SqliteType.Text) { Value = data });
 
 		if (await addMatchData.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError addMatchDataError) {
-			return await RollbackError<InsertDataResult>.TryRollback(addMatchDataError, Connection);
+			return await RollbackError.TryRollback(addMatchDataError, Connection);
 		}
 
 		// -------- Update Sequence Table --------
@@ -912,33 +913,34 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			Connection);
 
 		if (await updateSequenceTable.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError updateSequenceTableError) {
-			return await RollbackError<UpdateSequenceError>.TryRollback(updateSequenceTableError, Connection);
+			return await RollbackError.TryRollback(updateSequenceTableError, Connection);
 		}
 
 		// -------- Update Record Index Table --------
 		MatchIndexMetaData metaData = MatchIndexMetaData.CreateStoredMatch(
 			newMatchDataDto.GameDeviceId, newMatchDataDto.GameId, newMatchDataDto.EventDeviceId, newMatchDataDto.EventMetaDataId);
 
-		SetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(newMatchDataDto.DeviceId, nextMatchId, metaData);
+		Result updateIndexResult = await Indexer.SetMatchIndexMetaData(newMatchDataDto.DeviceId, nextMatchId, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
 		SqliteCommand commitTransaction = new("COMMIT;", Connection);
 		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError commitError) {
-			return await RollbackError<CommitTransactionError>.TryRollback(commitError, Connection);
+			return await RollbackError.TryRollback(commitError, Connection);
 		}
 
-		return Success.Instance;
+		return Result.Success;
 	}
 
 	public async Task<Result> AddNewEditedMatchData(NewEditedMatchDataDto newEditedMatchDataDto) {
 
 		// -------- Open Transaction --------
-		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
-		if (await openTransaction.ExecuteNonQueryAndExpect(0) is ExecuteNonQueryAndExpectError openTransactionError) {
-			return new BeginTransactionError(openTransactionError);
+		SqliteCommand beginTransaction = new("BEGIN TRANSACTION;", Connection);
+		ExecuteNonQueryAndExpectResult beginResult = await beginTransaction.ExecuteNonQueryAndExpect(0);
+		if (beginResult.IsFailure) {
+			return new AdHocError("Error opening transaction", beginResult.Error);
 		}
 
 		// -------- Get MatchId --------
@@ -949,11 +951,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		IntegerScalarResult getMatchIdResult = await getMatchId.ExecuteIntegerScalar();
 		if (getMatchIdResult.IsFailure) {
-			return await RollbackError<GetIdError>.TryRollback(getMatchIdResult.Error, Connection);
+			return await RollbackError.TryRollback(getMatchIdResult.Error, Connection);
 		}
 
 		if (getMatchIdResult.Value == long.MaxValue) {
-			return await RollbackError<TableOverflowError>.TryRollback(new(), Connection);
+			return await RollbackError.TryRollback(new(), Connection);
 		}
 
 		long nextMatchId = getMatchIdResult.Value + 1;
@@ -993,7 +995,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		addMatchData.Parameters.Add(new("@Data", SqliteType.Text) { Value = data });
 
 		if (await addMatchData.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError addMatchDataError) {
-			return await RollbackError<InsertDataResult>.TryRollback(addMatchDataError, Connection);
+			return await RollbackError.TryRollback(addMatchDataError, Connection);
 		}
 
 		// -------- Update Sequence Table --------
@@ -1006,33 +1008,35 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			Connection);
 
 		if (await updateSequenceTable.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError updateSequenceTableError) {
-			return await RollbackError<UpdateSequenceError>.TryRollback(updateSequenceTableError, Connection);
+			return await RollbackError.TryRollback(updateSequenceTableError, Connection);
 		}
 
 		// -------- Update Record Index Table --------
 		MatchIndexMetaData metaData = MatchIndexMetaData.CreateStoredMatch(
 			newEditedMatchDataDto.GameDeviceId, newEditedMatchDataDto.GameId, newEditedMatchDataDto.EventDeviceId, newEditedMatchDataDto.EventMetaDataId);
 
-		SetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(newEditedMatchDataDto.DeviceId, nextMatchId, metaData);
+		Result updateIndexResult = await Indexer.SetMatchIndexMetaData(newEditedMatchDataDto.DeviceId, nextMatchId, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
 		SqliteCommand commitTransaction = new("COMMIT;", Connection);
-		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError commitError) {
-			return await RollbackError<CommitTransactionError>.TryRollback(commitError, Connection);
+		ExecuteNonQueryAndExpectResult commitResult = await commitTransaction.ExecuteNonQueryAndExpect(0);
+		if (commitResult.IsFailure) {
+			return await RollbackError.TryRollback(commitResult.Error, Connection);
 		}
 
-		return Success.Instance;
+		return Result.Success;
 	}
 
 	public async Task<Result> ImportMatchData(MatchDataDto importMatchDataDto) {
 
 		// -------- Open Transaction --------
-		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
-		if (await openTransaction.ExecuteNonQueryAndExpect(0) is ExecuteNonQueryAndExpectError openTransactionError) {
-			return new BeginTransactionError(openTransactionError);
+		SqliteCommand beginTransaction = new("BEGIN TRANSACTION;", Connection);
+		ExecuteNonQueryAndExpectResult beginResult = await beginTransaction.ExecuteNonQueryAndExpect(0);
+		if (beginResult.IsFailure) {
+			return new AdHocError("Error opening transaction", beginResult.Error);
 		}
 
 		// -------- Add Match Data --------
@@ -1070,33 +1074,35 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		addMatchData.Parameters.Add(new("@Data", SqliteType.Text) { Value = data });
 
 		if (await addMatchData.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError addMatchDataError) {
-			return await RollbackError<InsertDataResult>.TryRollback(addMatchDataError, Connection);
+			return await RollbackError.TryRollback(addMatchDataError, Connection);
 		}
 
 		// -------- Update Record Index Table --------
 		MatchIndexMetaData metaData = MatchIndexMetaData.CreateStoredMatch(
 			importMatchDataDto.GameDeviceId, importMatchDataDto.GameId, importMatchDataDto.EventDeviceId, importMatchDataDto.EventMetaDataId);
 
-		SetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(importMatchDataDto.DeviceId, importMatchDataDto.MatchId, metaData);
+		Result updateIndexResult = await Indexer.SetMatchIndexMetaData(importMatchDataDto.DeviceId, importMatchDataDto.MatchId, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
 		SqliteCommand commitTransaction = new("COMMIT;", Connection);
-		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError commitError) {
-			return await RollbackError<CommitTransactionError>.TryRollback(commitError, Connection);
+		ExecuteNonQueryAndExpectResult commitResult = await commitTransaction.ExecuteNonQueryAndExpect(0);
+		if (commitResult.IsFailure) {
+			return await RollbackError.TryRollback(commitResult.Error, Connection);
 		}
 
-		return Success.Instance;
+		return Result.Success;
 	}
 
 	public async Task<Result> DeleteMatchData(MatchDataDto matchDataToDelete) {
 
 		// -------- Open Transaction --------
-		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
-		if (await openTransaction.ExecuteNonQueryAndExpect(0) is ExecuteNonQueryAndExpectError openTransactionError) {
-			return new BeginTransactionError(openTransactionError);
+		SqliteCommand beginTransaction = new("BEGIN TRANSACTION;", Connection);
+		ExecuteNonQueryAndExpectResult beginResult = await beginTransaction.ExecuteNonQueryAndExpect(0);
+		if (beginResult.IsFailure) {
+			return new AdHocError("Error opening transaction", beginResult.Error);
 		}
 
 		// -------- Delete Match Data --------
@@ -1111,33 +1117,35 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		deleteMatchData.Parameters.Add(new("@OriginalDeviceId", SqliteType.Text) { Value = matchDataToDelete.OriginalDeviceId });
 		deleteMatchData.Parameters.Add(new("@OriginalMatchId", SqliteType.Integer) { Value = matchDataToDelete.OriginalMatchId });
 
-		if (await deleteMatchData.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError deleteMatchDataError) {
-			return await RollbackError<DeleteDataError>.TryRollback(deleteMatchDataError, Connection);
+		ExecuteNonQueryUncheckedResult deleteMatchResult = await deleteMatchData.ExecuteNonQueryUnchecked();
+		if (deleteMatchResult.IsFailure) {
+			return await RollbackError.TryRollback(deleteMatchResult.Error, Connection);
 		}
 
 		// -------- Update Record Index Table --------
 		MatchIndexMetaData metaData = MatchIndexMetaData.CreateNoneMatch();
 
-		SetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(matchDataToDelete.DeviceId, matchDataToDelete.MatchId, metaData);
+		Result updateIndexResult = await Indexer.SetMatchIndexMetaData(matchDataToDelete.DeviceId, matchDataToDelete.MatchId, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<SetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
 		SqliteCommand commitTransaction = new("COMMIT;", Connection);
-		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError commitError) {
-			return await RollbackError<CommitTransactionError>.TryRollback(commitError, Connection);
+		ExecuteNonQueryAndExpectResult commitResult = await commitTransaction.ExecuteNonQueryAndExpect(0);
+		if (commitResult.IsFailure) {
+			return await RollbackError.TryRollback(commitResult.Error, Connection);
 		}
 
-		return Success.Instance;
+		return Result.Success;
 	}
 
 	public async Task<Result> DeleteMatchDataFromEvent(EventDto eventDto) {
 
 		// -------- Open Transaction --------
-		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
-		if (await openTransaction.ExecuteNonQueryAndExpect(0) is ExecuteNonQueryAndExpectError openTransactionError) {
-			return new BeginTransactionError(openTransactionError);
+		BeginTransactionResult beginResult = await Connection.OpenTransaction();
+		if (beginResult.IsFailure) {
+			return new AdHocError("Error opening transaction", beginResult.Error);
 		}
 
 		// -------- Delete Match Data --------
@@ -1152,33 +1160,36 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		deleteMatchData.Parameters.Add(new("@EventDeviceId", SqliteType.Text) { Value = eventDto.DeviceId });
 		deleteMatchData.Parameters.Add(new("@EventMetaDataId", SqliteType.Integer) { Value = eventDto.MetaDataId });
 
-		if (await deleteMatchData.ExecuteNonQueryUnchecked() is ExecuteNonQueryUncheckedError deleteMatchDataError) {
-			return await RollbackError<BulkDeleteDataError>.TryRollback(deleteMatchDataError, Connection);
+		ExecuteNonQueryUncheckedResult deleteMatchResult = await deleteMatchData.ExecuteNonQueryUnchecked();
+		if (deleteMatchResult.IsFailure) {
+			return await RollbackError.TryRollback(deleteMatchResult.Error, Connection);
 		}
 
 		// -------- Update Record Index Table --------
 		MatchIndexMetaData metaData = MatchIndexMetaData.CreateNoneMatch();
 
-		BulkSetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(eventDto, metaData);
+		Result updateIndexResult = await Indexer.SetMatchIndexMetaData(eventDto, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<BulkSetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
 		SqliteCommand commitTransaction = new("COMMIT;", Connection);
-		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError commitError) {
-			return await RollbackError<CommitTransactionError>.TryRollback(commitError, Connection);
+		ExecuteNonQueryAndExpectResult commitResult = await commitTransaction.ExecuteNonQueryAndExpect(0);
+		if (commitResult.IsFailure) {
+			return await RollbackError.TryRollback(commitResult.Error, Connection);
 		}
 
-		return Success.Instance;
+		return Result.Success;
 	}
 
 	public async Task<Result> DeleteMatchDataFromGame(GameDto gameDto) {
 
 		// -------- Open Transaction --------
-		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
-		if (await openTransaction.ExecuteNonQueryAndExpect(0) is ExecuteNonQueryAndExpectError openTransactionError) {
-			return new BeginTransactionError(openTransactionError);
+		SqliteCommand beginTransaction = new("BEGIN TRANSACTION;", Connection);
+		ExecuteNonQueryAndExpectResult beginResult = await beginTransaction.ExecuteNonQueryAndExpect(0);
+		if (beginResult.IsFailure) {
+			return new AdHocError("Error opening transaction", beginResult.Error);
 		}
 
 		// -------- Delete Match Data --------
@@ -1193,44 +1204,42 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		deleteMatchData.Parameters.Add(new("@GameDeviceId", SqliteType.Text) { Value = gameDto.DeviceId });
 		deleteMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = gameDto.GameId });
 
-		if (await deleteMatchData.ExecuteNonQueryUnchecked() is ExecuteNonQueryUncheckedError deleteMatchDataError) {
-			return await RollbackError<BulkDeleteDataError>.TryRollback(deleteMatchDataError, Connection);
+		ExecuteNonQueryUncheckedResult deleteMatchResult = await deleteMatchData.ExecuteNonQueryUnchecked();
+		if (deleteMatchResult.IsFailure) {
+			return await RollbackError.TryRollback(deleteMatchResult.Error, Connection);
 		}
 
 		// -------- Update Record Index Table --------
 		MatchIndexMetaData metaData = MatchIndexMetaData.CreateNoneMatch();
-
-		BulkSetRecordMetaDataResult updateIndexResult = await Indexer.SetMatchIndexMetaData(gameDto, metaData);
+		Result updateIndexResult = await Indexer.SetMatchIndexMetaData(gameDto, metaData);
 		if (updateIndexResult.IsFailure) {
-			return await RollbackError<BulkSetRecordMetaDataError>.TryRollback(updateIndexResult.Error, Connection);
+			return await RollbackError.TryRollback(updateIndexResult.Error, Connection);
 		}
 
 		// -------- Commit Transaction --------
 		SqliteCommand commitTransaction = new("COMMIT;", Connection);
-		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError commitError) {
-			return await RollbackError<CommitTransactionError>.TryRollback(commitError, Connection);
+		ExecuteNonQueryAndExpectResult commitResult = await commitTransaction.ExecuteNonQueryAndExpect(0);
+		if (commitResult.IsFailure) {
+			return await RollbackError.TryRollback(commitResult.Error, Connection);
 		}
 
-		return new Success();
+		return Result.Success;
 	}
 
 	public async Task<Result> DeleteAllMatchData() {
 
 		// -------- Open Transaction --------
-		SqliteCommand openTransaction = new("BEGIN TRANSACTION;", Connection);
-		if (await openTransaction.ExecuteNonQueryAndExpect(0) is ExecuteNonQueryAndExpectError openTransactionError) {
-			return new BeginTransactionError(openTransactionError);
+		SqliteCommand beginTransaction = new("BEGIN TRANSACTION;", Connection);
+		ExecuteNonQueryAndExpectResult beginResult = await beginTransaction.ExecuteNonQueryAndExpect(0);
+		if (beginResult.IsFailure) {
+			return new AdHocError("Error opening transaction", beginResult.Error);
 		}
 
 		// -------- Delete Match Data --------
 		SqliteCommand deleteMatchData = new($"DELETE FROM \"{nameof(Tables.MatchData)}\"", Connection);
-		ExecuteNonQueryAndExpectResult deleteMatchResult = await deleteMatchData.ExecuteNonQueryUnchecked();
+		ExecuteNonQueryUncheckedResult deleteMatchResult = await deleteMatchData.ExecuteNonQueryUnchecked();
 		if (deleteMatchResult.IsFailure) {
 			return await RollbackError.TryRollback(deleteMatchResult.Error, Connection);
-		}
-
-		if (await deleteMatchData.ExecuteNonQueryUnchecked() is ExecuteNonQueryUncheckedError deleteMatchDataError) {
-			return await RollbackError.TryRollback(deleteMatchDataError, Connection);
 		}
 
 		// -------- Update Record Index Table --------
@@ -1241,8 +1250,9 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		// -------- Commit Transaction --------
 		SqliteCommand commitTransaction = new("COMMIT;", Connection);
-		if (await commitTransaction.ExecuteNonQueryAndExpect(1) is ExecuteNonQueryAndExpectError commitError) {
-			return await RollbackError.TryRollback(commitError, Connection);
+		ExecuteNonQueryAndExpectResult commitResult = await commitTransaction.ExecuteNonQueryAndExpect(0);
+		if (commitResult.IsFailure) {
+			return await RollbackError.TryRollback(commitResult.Error, Connection);
 		}
 
 		return Result.Success;

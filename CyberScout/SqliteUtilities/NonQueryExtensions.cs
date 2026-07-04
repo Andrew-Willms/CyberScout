@@ -40,7 +40,7 @@ public static class NonQueryExtensions {
 	/// <summary> Executes an <see cref="SqliteCommand"/> as a non-query, expecting a specific number of modifications to occur. </summary>
 	/// <param name="command"> The <see cref="SqliteCommand"/> to be executed as a non-query. </param>
 	/// <returns> A <see cref="ExecuteNonQueryUncheckedError"/> if an error occured, otherwise <see langword="null"/>. </returns>
-	public static async Task<ExecuteNonQueryAndExpectResult> ExecuteNonQueryUnchecked(this SqliteCommand command) {
+	public static async Task<ExecuteNonQueryUncheckedResult> ExecuteNonQueryUnchecked(this SqliteCommand command) {
 
 		try {
 			await command.ExecuteNonQueryAsync();

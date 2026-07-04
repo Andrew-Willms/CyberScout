@@ -18,24 +18,6 @@ public class Program {
 
 	private static async Task Main(string[] args) {
 
-		Console.WriteLine(TestTypeParameter<TestEnum>());
-	}
-
-	private enum TestEnum {
-		A,
-		B,
-		C
-	}
-
-	private static bool TestTypeParameter<TEnum>() where TEnum : struct, Enum {
-
-		Console.WriteLine(typeof(TEnum));
-
-		if (Enum.IsDefined(typeof(TEnum), 1)) {
-			return true;
-		}
-
-		return false;
 	}
 
 	/*
