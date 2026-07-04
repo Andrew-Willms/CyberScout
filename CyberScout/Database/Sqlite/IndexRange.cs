@@ -43,13 +43,13 @@ public record MatchIndexMetaData : RecordMetaData  {
 		};
 	}
 
-	public static MatchIndexMetaData CreateStoredMatch(string gameDeviceId, long gameId, long eventMetaDataId) {
+	public static MatchIndexMetaData CreateStoredMatch(string gameDeviceId, long gameId, long eventDataId) {
 
 		return new() {
 			Status = RecordStatus.Stored,
 			GameDeviceId = gameDeviceId,
 			GameId = gameId,
-			EventDataId = eventMetaDataId
+			EventDataId = eventDataId
 		};
 	}
 

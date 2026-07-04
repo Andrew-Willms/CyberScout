@@ -52,6 +52,11 @@ public record Result {
 		return new(error);
 	}
 
+	public bool IsError([NotNullWhen(true)] out Error? error) {
+		error = Error;
+		return IsFailure;
+	}
+
 }
 
 
@@ -118,6 +123,16 @@ public record Result<TValue> where TValue : class {
 	/// <param name="error"> The error to be stored by the <see cref="Result{TValue}">Result</see>. </param>
 	public static implicit operator Result<TValue>(Error error) {
 		return new(error);
+	}
+
+	public bool IsValue([NotNullWhen(true)] out TValue? value) {
+		value = Value;
+		return IsSuccess;
+	}
+
+	public bool IsError([NotNullWhen(true)] out Error? error) {
+		error = Error;
+		return IsFailure;
 	}
 
 }
@@ -191,6 +206,16 @@ public record Result<TValue, TError>
 		return new(error);
 	}
 
+	public bool IsValue([NotNullWhen(true)] out TValue? value) {
+		value = Value;
+		return IsSuccess;
+	}
+
+	public bool IsError([NotNullWhen(true)] out TError? error) {
+		error = Error;
+		return IsFailure;
+	}
+
 }
 
 
@@ -243,6 +268,11 @@ public record ResultCustomError<TError> where TError : class {
 	/// <param name="error">The error to be stored by the <see cref="ResultCustomError{TError}">ResultCustomError</see>.</param>
 	public static implicit operator ResultCustomError<TError>(TError error) {
 		return new(error);
+	}
+
+	public bool IsError([NotNullWhen(true)] out TError? error) {
+		error = Error;
+		return IsFailure;
 	}
 
 }

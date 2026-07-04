@@ -1,11 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using OneOf;
 using UtilitiesLibrary.Collections;
-using Willmsy.AsyncTryResult;
+using UtilitiesLibrary.Results;
 
 namespace Comms.Dtos;
 
@@ -134,7 +133,7 @@ public record SubGraph {
 
 
 
-public record CreateEditGraphResult : AsyncTryResult<EditGraph, CreateEditGraphError> {
+public record CreateEditGraphResult : Result<EditGraph, CreateEditGraphError> {
 
 	public CreateEditGraphResult(EditGraph value) : base(value) { }
 
@@ -171,21 +170,30 @@ public partial class CreateEditGraphError : OneOfBase<
 	EmptyMatchesListError,
 	DuplicateMatchError,
 	MismatchedOriginalMatchError,
-	MultipleOriginalMatchesError
->;
+	MultipleOriginalMatchesError> {
+
+	public static implicit operator Error(CreateEditGraphError error) {
+		return error.Match<Error>(
+			error1 => error1,
+			error2 => error2,
+			error3 => error3,
+			error4 => error4);
+	}
+
+}
 
 
-public record EmptyMatchesListError;
+public record EmptyMatchesListError : Error;
 
-public record DuplicateMatchError {
+public record DuplicateMatchError : Error {
 
 	public required List<MatchDataDto> Duplicate { get; init; }
 
 }
 
-public record MismatchedOriginalMatchError;
+public record MismatchedOriginalMatchError : Error;
 
-public record MultipleOriginalMatchesError {
+public record MultipleOriginalMatchesError : Error {
 
 	public required MatchDataDto First { get; init; }
 
