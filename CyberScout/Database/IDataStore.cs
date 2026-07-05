@@ -1,4 +1,5 @@
 ﻿using Comms.Dtos;
+using Database.Domain;
 using UtilitiesLibrary.Results;
 
 namespace Database;

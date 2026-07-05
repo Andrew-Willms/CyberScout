@@ -1,7 +1,7 @@
 ﻿using Comms.Dtos;
 using Domain.GameSpecification;
 
-namespace Database;
+namespace Database.Domain;
 
 
 

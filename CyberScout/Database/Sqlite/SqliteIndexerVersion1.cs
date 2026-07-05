@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using Comms.Dtos;
+using Database.Domain;
 using Microsoft.Data.Sqlite;
 using OneOf;
 using SqliteUtilities;

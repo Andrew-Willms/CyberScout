@@ -2,7 +2,7 @@
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Results;
 
-namespace Database.Sqlite;
+namespace Database.Domain;
 
 
 
