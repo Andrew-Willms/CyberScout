@@ -22,6 +22,8 @@ public static class Tables {
 
 	// -------- Game --------
 
+	// TODO move to a central information location.
+	// Each type of record has its own sequence so that records of each type are more contiguous in the indexes.
 	public static class GameIdSequence {
 		public const string LastUsedId = "LastUsedId";
 	}
@@ -33,7 +35,7 @@ public static class Tables {
 		public const string Status = "Status";
 	}
 
-	public static class Games {
+	public static class GameData {
 		public const string DeviceId = "DeviceId";
 		public const string GameId = "GameId";
 		public const string TimePublished = "TimePublished";
@@ -56,20 +58,11 @@ public static class Tables {
 		public const string Status = "Status";
 	}
 
-	// Every device with an internet connection will likely create an event from TBA and then will share this event to other devices.
-	// This will result in a decent number of records being shared with little purpose. However, each even should only be about the same
-	// amount of data as a match. I don't think it will meaningfully slow things down, and it's very convenient to treat everything the same.
-	public static class EventMetaData {
+	public static class EventData {
 		public const string DeviceId = "DeviceId";
-		public const string MetaDataId = "MetaDataId";
-		public const string DataId = "DataId";
+		public const string EventId = "EventId";
 		public const string TimePublished = "TimePublished";
 		public const string Source = "Source";
-	}
-
-	public static class EventData {
-		public const string EventDataId = "EventDataId";
-		public const string Data = "Data";
 	}
 
 	// -------- Match --------
@@ -85,7 +78,7 @@ public static class Tables {
 		public const string Status = "Status";
 		public const string GameDeviceId = "GameDeviceId";
 		public const string GameId = "GameId";
-		public const string EventDataId = "EventDataId";
+		public const string EventCode = "EventCode";
 	}
 
 	public static class MatchData {
@@ -107,8 +100,7 @@ public static class Tables {
 		// central server for event data (which will ping TBA and create event data authored by the central server that
 		// can then be used by all devices) instead of having each device ping TBA individually (resulting in each device
 		// having uniquely authored event data).
-		public const string EventDeviceId = "EventDeviceId";
-		public const string EventMetaDataId = "EventMetaDataId";
+		public const string EventCode = "EventCode";
 		public const string Data = "Data";
 	}
 

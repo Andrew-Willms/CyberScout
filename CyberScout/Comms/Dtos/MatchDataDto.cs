@@ -12,7 +12,7 @@ namespace Comms.Dtos;
 
 public class MatchDataDto {
 
-	public required MatchData MatchData { get; init; }
+	public required MatchData Data { get; init; }
 
 	public required string DeviceId { get; init; }
 
@@ -32,9 +32,18 @@ public class MatchDataDto {
 
 	public required long GameId { get; init; }
 
-	public required string EventDeviceId { get; init; }
-
-	public required long EventMetaDataId { get; init; }
+	// TODO move this information to somewhere central
+	// I decided that MatchData shouldn't actually point to an EventSchedule object.
+	// EventSchedules only exist to provide suggestions for team numbers once you pick a match and alliance.
+	// Having MatchData objects point to EventSchedule objects require a bunch of additional validation on MatchData objects.
+	// Otherwise, it would create the possibility for invalid MatchData objects.
+	// For MatchDataDtos to point to EventSchedule objects (or to have an EventDeviceId and EventMetaDataId) then devices
+	// would need to share events before they can share matches. This would likely increase the size of MatchDataQr codes.
+	// MatchDataDtos need an EventCode property so that they can be indexed by event in the database.
+	// Obviously I don't want to create the possibility of invalid data so it will simply return the EventCode from the MatchData property.
+	// The model object can scan for MatchData with an EventCode that doesn't correspond to an EventSchedule and for matches where the teams don't match the event schedule.
+	// These can be raised as errors within the Model interface.
+	public string EventCode => Data.EventCode;
 
 
 
@@ -48,9 +57,7 @@ public class MatchDataDto {
 		long originalMatchId,
 		List<(string deviceId, long matchId)> parents,
 		string gameDeviceId,
-		long gameId,
-		string eventDeviceId,
-		long eventMetaDataId) {
+		long gameId) {
 
 		// The current match cannot be before the original match.
 		if (deviceId == originalDeviceId && matchId < originalMatchId) {
@@ -81,16 +88,14 @@ public class MatchDataDto {
 		}
 
 		return new MatchDataDto {
-			MatchData = matchData,
+			Data = matchData,
 			DeviceId = deviceId,
 			MatchId = matchId,
 			OriginalDeviceId = originalDeviceId,
 			OriginalMatchId = originalMatchId,
 			Parents = parents,
 			GameDeviceId = gameDeviceId,
-			GameId = gameId,
-			EventDeviceId = eventDeviceId,
-			EventMetaDataId = eventMetaDataId
+			GameId = gameId
 		};
 	}
 

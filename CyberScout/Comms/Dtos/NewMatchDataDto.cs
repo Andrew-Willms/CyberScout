@@ -6,7 +6,7 @@ namespace Comms.Dtos;
 
 public record NewMatchDataDto {
 
-	public required MatchData MatchData { get; init; }
+	public required MatchData Data { get; init; }
 
 	public required string DeviceId { get; init; }
 
@@ -14,8 +14,6 @@ public record NewMatchDataDto {
 
 	public required long GameId { get; init; }
 
-	public required string EventDeviceId { get; init; }
-
-	public required long EventMetaDataId { get; init; }
+	public string EventCode => Data.EventCode;
 
 }

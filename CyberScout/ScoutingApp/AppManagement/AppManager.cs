@@ -220,17 +220,17 @@ public class AppManager : INotifyPropertyChanged {
 		//}
 
 		ActiveMatchData = new(GameSpecification) {
-			MatchNumber = importMatchData.MatchData.Match.MatchNumber,
-			ReplayNumber = importMatchData.MatchData.Match.ReplayNumber,
-			MatchType = importMatchData.MatchData.Match.Type,
-			TeamNumber = importMatchData.MatchData.TeamNumber,
-			Alliance = importMatchData.MatchData.AllianceIndex,
+			MatchNumber = importMatchData.Data.Match.MatchNumber,
+			ReplayNumber = importMatchData.Data.Match.ReplayNumber,
+			MatchType = importMatchData.Data.Match.Type,
+			TeamNumber = importMatchData.Data.TeamNumber,
+			Alliance = importMatchData.Data.AllianceIndex,
 			EditOf = (importMatchData.DeviceId, importMatchData.RecordId)
 		};
 
 		for (int i = 0; i < GameSpecification.DataFields.Count; i++) {
 
-			switch (ActiveMatchData.DataFields[i], importMatchData.MatchData.DataFields[i]) {
+			switch (ActiveMatchData.DataFields[i], importMatchData.Data.DataFields[i]) {
 				case (BooleanDataField booleanDataField, bool boolValue):
 					booleanDataField.Value = boolValue;
 					break;

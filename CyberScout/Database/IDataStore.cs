@@ -1,5 +1,5 @@
 ﻿using Comms.Dtos;
-using Domain.GameSpecification;
+using Database.Results;
 using UtilitiesLibrary.Results;
 
 namespace Database;
@@ -8,7 +8,7 @@ namespace Database;
 
 public interface IDataStoreCreator {
 
-	public Task<Result<IDataStore>> Create(string settings); // TODO make this Result<> instead of nullable
+	public Task<Result<IDataStore>> Create(string settings);
 
 }
 
@@ -16,9 +16,9 @@ public interface IDataStoreCreator {
 
 public interface IDataStore {
 
-	public Task<Result<List<GameSpec>>> GetGameSpecs();
+	public Task<Result<List<GameDto>>> GetGameSpecs();
 	
-	public Task<Result> AddNewGameSpec();
+	public Task<Result<GameDto>> AddNewGameSpec();
 
 	public Task<Result> ImportGameSpec();
 
@@ -26,10 +26,9 @@ public interface IDataStore {
 
 
 
-	// TODO Consider changing EventSchedule to EventDto or something
-	public Task<Result<List<EventSchedule>>> GetEvents();
+	public Task<Result<List<InternalEventDto>>> GetEvents();
 
-	public Task<Result> AddNewEvent();
+	public Task<Result<InternalEventDto>> AddNewEvent();
 
 	public Task<Result> ImportEvent();
 
@@ -37,17 +36,17 @@ public interface IDataStore {
 
 
 
-	public Task<Result<List<EditGraph>>> GetMatchDataFromGame(GameDto gameDto);
+	public Task<Result<List<MatchDataDto>>> GetMatchDataFromGame(GameDto gameDto);
 
-	public Task<Result> AddNewMatchData(NewMatchDataDto newMatchDataDto);
+	public Task<Result<MatchDataDto>> AddNewMatchData(NewMatchDataDto newMatchDataDto);
 
-	public Task<Result> AddNewEditedMatchData(NewEditedMatchDataDto newEditedMatchDataDto);
+	public Task<Result<MatchDataDto>> AddEditedMatchData(EditedMatchDataDto editedMatchDataDto);
 
 	public Task<Result> ImportMatchData(MatchDataDto importMatchDataDto);
 
 	public Task<Result> DeleteMatchData(MatchDataDto matchDataToDelete);
 
-	public Task<Result> DeleteMatchDataFromEvent(EventDto eventDto);
+	public Task<Result> DeleteMatchDataFromEvent(string eventCode);
 
 	public Task<Result> DeleteMatchDataFromGame(GameDto gameDto);
 

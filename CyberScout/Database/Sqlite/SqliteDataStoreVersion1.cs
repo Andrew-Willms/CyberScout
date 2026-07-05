@@ -1,7 +1,7 @@
 ﻿using Comms.Dtos;
 using Comms.Serialization;
 using Database.Results;
-using Domain.GameSpecification;
+using Domain.Data;
 using Microsoft.Data.Sqlite;
 using SqliteUtilities;
 using UtilitiesLibrary.Results;
@@ -114,7 +114,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			return result;
 		}
 
-		result = await CreateGamesTable(connection);
+		result = await CreateGameDataTable(connection);
 		if (result.IsFailure) {
 			return result;
 		}
@@ -130,11 +130,6 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		result = await CreateEventMetaDataTable(connection);
-		if (result.IsFailure) {
-			return result;
-		}
-
-		result = await CreateEventDataTable(connection);
 		if (result.IsFailure) {
 			return result;
 		}
@@ -327,29 +322,29 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return Result.Success;
 	}
 
-	private static async Task<Result> CreateGamesTable(SqliteConnection connection) {
+	private static async Task<Result> CreateGameDataTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
-			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.Games)}" (
-			     "{Tables.Games.DeviceId}" TEXT NOT NULL,
-			     "{Tables.Games.GameId}" INTEGER NOT NULL,
-			     "{Tables.Games.TimePublished}" INTEGER NOT NULL,
-			     "{Tables.Games.MajorVersion}" INTEGER NOT NULL,
-			     "{Tables.Games.MinorVersion}" INTEGER NOT NULL,
-			     "{Tables.Games.PatchVersion}" INTEGER NOT NULL,
-			     "{Tables.Games.Data}" TEXT NOT NULL,
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.GameData)}" (
+			     "{Tables.GameData.DeviceId}" TEXT NOT NULL,
+			     "{Tables.GameData.GameId}" INTEGER NOT NULL,
+			     "{Tables.GameData.TimePublished}" INTEGER NOT NULL,
+			     "{Tables.GameData.MajorVersion}" INTEGER NOT NULL,
+			     "{Tables.GameData.MinorVersion}" INTEGER NOT NULL,
+			     "{Tables.GameData.PatchVersion}" INTEGER NOT NULL,
+			     "{Tables.GameData.Data}" TEXT NOT NULL,
 			     
-			     PRIMARY KEY ("{Tables.Games.DeviceId}", "{Tables.Games.GameId}"),
+			     PRIMARY KEY ("{Tables.GameData.DeviceId}", "{Tables.GameData.GameId}"),
 			     
-			     FOREIGN KEY "{Tables.Games.DeviceId}"
+			     FOREIGN KEY "{Tables.GameData.DeviceId}"
 			         REFERENCES "{nameof(Tables.KnownDevices)}" "{Tables.KnownDevices.DeviceId}"
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT,
 			 );
 
-			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.Games)}"
-			 BEFORE UPDATE ON "{nameof(Tables.Games)}"
+			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.GameData)}"
+			 BEFORE UPDATE ON "{nameof(Tables.GameData)}"
 			 BEGIN
 			     SELECT RAISE(ABORT, 'Updates are not allowed on this table; only inserts and deletes.');
 			 END;
@@ -451,49 +446,18 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		SqliteCommand command = new(
 			$"""
-			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EventMetaData)}" (
-			     "{Tables.EventMetaData.DeviceId}" TEXT NOT NULL,
-			     "{Tables.EventMetaData.MetaDataId}" INTEGER NOT NULL,
-			     "{Tables.EventMetaData.DataId}" INTEGER NOT NULL,
-			     "{Tables.EventMetaData.TimePublished}" INTEGER NOT NULL,
-			     "{Tables.EventMetaData.Source}" TEXT NOT NULL CHECK ("{Tables.EventMetaData.Source}" IN ('{nameof(EventDataSources.TheBlueAlliance)}', '{EventDataSources.Manual}'))
+			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EventData)}" (
+			     "{Tables.EventData.DeviceId}" TEXT NOT NULL,
+			     "{Tables.EventData.EventId}" INTEGER NOT NULL,
+			     "{Tables.EventData.TimePublished}" INTEGER NOT NULL,
+			     "{Tables.EventData.Source}" TEXT NOT NULL CHECK ("{Tables.EventData.Source}" IN ('{nameof(EventDataSources.TheBlueAlliance)}', '{EventDataSources.Manual}'))
 			     
-			     PRIMARY KEY ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.MetaDataId}"),
+			     PRIMARY KEY ("{Tables.EventData.DeviceId}", "{Tables.EventData.EventId}"),
 			     
-			     FOREIGN KEY "{Tables.EventMetaData.DeviceId}"
+			     FOREIGN KEY "{Tables.EventData.DeviceId}"
 			         REFERENCES "{nameof(Tables.KnownDevices)}" ("{Tables.KnownDevices.DeviceId}")
 			             ON UPDATE RESTRICT
-			             ON DELETE RESTRICT,
-			 	
-			     FOREIGN KEY "{Tables.EventMetaData.DataId}"
-			         REFERENCES "{nameof(Tables.EventData)}" ("{Tables.EventData.EventDataId}")
-			             ON UPDATE RESTRICT
-			             ON DELETE RESTRICT,
-			 );
-
-			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.EventMetaData)}"
-			 BEFORE UPDATE ON "{nameof(Tables.EventMetaData)}"
-			 BEGIN
-			     SELECT RAISE(ABORT, 'Updates are not allowed on this table; only inserts and deletes.');
-			 END;
-			 """,
-			connection);
-
-		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
-		if (result.IsFailure) {
-			return new AdHocError("Error adding EventMetaData table.", result.Error);
-		}
-
-		return Result.Success;
-	}
-
-	private static async Task<Result> CreateEventDataTable(SqliteConnection connection) {
-
-		SqliteCommand command = new(
-			$"""
-			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EventData)}" (
-			     "{Tables.EventData.EventDataId}" INTEGER PRIMARY KEY,
-			     "{Tables.EventData.Data}" TEXT NOT NULL
+			             ON DELETE RESTRICT
 			 );
 
 			 CREATE TRIGGER IF NOT EXISTS "block_updates_on_{nameof(Tables.EventData)}"
@@ -506,7 +470,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 		ExecuteNonQueryAndExpectResult result = await command.ExecuteNonQueryAndExpect(0);
 		if (result.IsFailure) {
-			return new AdHocError("Error adding EventData table.", result.Error);
+			return new AdHocError("Error adding EventMetaData table.", result.Error);
 		}
 
 		return Result.Success;
@@ -556,7 +520,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     "{Tables.MatchIndex.Status}" TEXT CHECK("{Tables.MatchIndex.Status}" IN ('{nameof(RecordStatus.Stored)}', '{nameof(RecordStatus.Stored)}')),
 			     "{Tables.MatchIndex.GameDeviceId}" TEXT NOT NULL,
 			     "{Tables.MatchIndex.GameId}" INTEGER NOT NULL,
-			     "{Tables.MatchIndex.EventDataId}" INTEGER NOT NULL,
+			     "{Tables.MatchIndex.EventCode}" INTEGER NOT NULL,
 			     
 			     CHECK ("{Tables.MatchIndex.StartIndex}" <= "{Tables.MatchIndex.EndIndex}"),
 			     
@@ -565,15 +529,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     FOREIGN KEY "{Tables.MatchIndex.DeviceId}"
 			         REFERENCES "{nameof(Tables.KnownDevices)}" "{Tables.KnownDevices.DeviceId}"
 			             ON UPDATE RESTRICT
-			             ON DELETE RESTRICT,
-			     
-			     FOREIGN KEY "{Tables.MatchIndex.EventDataId}"
-			         REFERENCES "{nameof(Tables.EventData)}" "{Tables.EventData.EventDataId}"
-			             ON UPDATE RESTRICT
-			             ON DELETE RESTRICT,
+			             ON DELETE RESTRICT
 			 	
 			     FOREIGN KEY ("{Tables.MatchIndex.GameDeviceId}", "{Tables.MatchIndex.GameId}")
-			         REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.GameId}")
+			         REFERENCES "{nameof(Tables.GameData)}" ("{Tables.GameData.DeviceId}", "{Tables.GameData.GameId}")
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT,
 			 );
@@ -620,8 +579,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			     "{Tables.MatchData.ParentsAsText}" TEXT,
 			     "{Tables.MatchData.GameDeviceId}" TEXT NOT NULL,
 			     "{Tables.MatchData.GameId}" INTEGER NOT NULL,
-			     "{Tables.MatchData.EventDeviceId}" TEXT NOT NULL,
-			     "{Tables.MatchData.EventMetaDataId}" INTEGER NOT NULL,
+			     "{Tables.MatchData.EventCode}" TEXT NOT NULL,
 			     "{Tables.MatchData.Data}" TEXT NOT NULL,
 			     
 			     PRIMARY KEY ("{Tables.MatchData.DeviceId}", "{Tables.MatchData.MatchId}"),
@@ -632,12 +590,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			             ON DELETE RESTRICT,
 			     
 			     FOREIGN KEY ("{Tables.MatchData.GameDeviceId}", "{Tables.MatchData.GameId}")
-			         REFERENCES "{nameof(Tables.Games)}" ("{Tables.Games.DeviceId}", "{Tables.Games.GameId}")
-			             ON UPDATE RESTRICT
-			             ON DELETE RESTRICT,
-			 		     
-			     FOREIGN KEY ("{Tables.MatchData.EventDeviceId}", "{Tables.MatchData.EventMetaDataId}")
-			         REFERENCES "{nameof(Tables.EventMetaData)}" ("{Tables.EventMetaData.DeviceId}", "{Tables.EventMetaData.MetaDataId}")
+			         REFERENCES "{nameof(Tables.GameData)}" ("{Tables.GameData.DeviceId}", "{Tables.GameData.GameId}")
 			             ON UPDATE RESTRICT
 			             ON DELETE RESTRICT
 			 );
@@ -684,11 +637,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 
 
-	public Task<Result<List<GameSpec>>> GetGameSpecs() {
+	public Task<Result<List<GameDto>>> GetGameSpecs() {
 		throw new NotImplementedException();
 	}
 
-	public Task<Result> AddNewGameSpec() {
+	public Task<Result<GameDto>> AddNewGameSpec() {
 		throw new NotImplementedException();
 	}
 
@@ -702,11 +655,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 
 
-	public Task<Result<List<EventSchedule>>> GetEvents() {
+	public Task<Result<List<InternalEventDto>>> GetEvents() {
 		throw new NotImplementedException();
 	}
 
-	public Task<Result> AddNewEvent() {
+	public Task<Result<InternalEventDto>> AddNewEvent() {
 		throw new NotImplementedException();
 	}
 
@@ -720,13 +673,13 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 
 
-	public async Task<Result<List<EditGraph>>> GetMatchDataFromGame(GameDto gameDto) {
+	public async Task<Result<List<MatchDataDto>>> GetMatchDataFromGame(GameDto gameDto) {
 
 		SqliteCommand getMatchData = new(
 			$"""
-			 SELECT * FROM "{nameof(Tables.Games)}"
-			 WHERE "{Tables.Games.DeviceId}" = @DeviceId
-			   AND "{Tables.Games.GameId}" = @GameId;
+			 SELECT * FROM "{nameof(Tables.GameData)}"
+			 WHERE "{Tables.GameData.DeviceId}" = @DeviceId
+			   AND "{Tables.GameData.GameId}" = @GameId;
 			 """,
 			Connection);
 
@@ -739,7 +692,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 		SqliteDataReader reader = readerResult.Value;
 
-		List<MatchDataDto> allMatchDtos = [];
+		List<MatchDataDto> matchDtos = [];
 		while (reader.Read()) {
 
 			GetTextResult deviceIdResult = reader.SafeGetText(Tables.MatchData.DeviceId);
@@ -790,17 +743,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			}
 			long gameId = gameIdResult.Value;
 
-			GetTextResult eventDeviceIdResult = reader.SafeGetText(Tables.MatchData.EventDeviceId);
+			GetTextResult eventDeviceIdResult = reader.SafeGetText(Tables.MatchData.EventCode);
 			if (eventDeviceIdResult.IsFailure) {
-				return new AdHocError(Tables.MatchData.EventDeviceId, eventDeviceIdResult.Error);
+				return new AdHocError(Tables.MatchData.EventCode, eventDeviceIdResult.Error);
 			}
-			string eventDeviceId = eventDeviceIdResult.Value;
-
-			GetIntegerResult eventMetaDataIdResult = reader.SafeGetInteger(Tables.MatchData.EventMetaDataId);
-			if (eventMetaDataIdResult.IsFailure) {
-				return new AdHocError(Tables.MatchData.EventMetaDataId, eventMetaDataIdResult.Error);
-			}
-			long eventMetaDataId = gameIdResult.Value;
+			string eventCode = eventDeviceIdResult.Value;
 
 			GetTextResult dataResult = reader.SafeGetText(Tables.MatchData.Data);
 			if (dataResult.IsFailure) {
@@ -812,37 +759,26 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			if (deserializationResult.IsFailure) {
 				return new AdHocError("Error deserializing match data.", deserializationResult.Error);
 			}
+			MatchData matchData = deserializationResult.Value;
 
-			CreateMatchDataDtoResult result = MatchDataDto.Create(deserializationResult.Value, deviceId, matchId, originalDeviceId, originalMatchId, parents, gameDeviceId,
-				gameId, eventDeviceId, eventMetaDataId);
+			if (eventCode != matchData.EventCode) {
+				return new AdHocError("EventCode column different from deserialized EventCode.");
+			}
+
+			CreateMatchDataDtoResult result = MatchDataDto.Create(
+				matchData, deviceId, matchId, originalDeviceId, originalMatchId, parents, gameDeviceId, gameId);
 
 			if (result.IsFailure) {
 				return new AdHocError("Error creating matchDataDto.", result.Error);
 			}
 
-			allMatchDtos.Add(result.Value);
+			matchDtos.Add(result.Value);
 		}
 
-		List<List<MatchDataDto>> groupedMatches = allMatchDtos
-			.GroupBy(match => (match.OriginalDeviceId, match.OriginalMatchId))
-			.Select(group => group.ToList())
-			.ToList();
-
-		List<EditGraph> editGraphs = [];
-		foreach (List<MatchDataDto> matchGroup in groupedMatches) {
-
-			CreateEditGraphResult createEditGraphResult = EditGraph.Create(matchGroup);
-			if (createEditGraphResult.IsFailure) {
-				return new AdHocError("Error creating edit graph", createEditGraphResult.Error);
-			}
-
-			editGraphs.Add(createEditGraphResult.Value);
-		}
-
-		return editGraphs;
+		return matchDtos;
 	}
 
-	public async Task<Result> AddNewMatchData(NewMatchDataDto newMatchDataDto) {
+	public async Task<Result<MatchDataDto>> AddNewMatchData(NewMatchDataDto newMatchDataDto) {
 
 		// -------- Open Transaction --------
 		BeginTransactionResult beginResult = await Connection.OpenTransaction();
@@ -867,13 +803,13 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		long nextMatchId = getMatchIdResult.Value + 1;
 
 		// -------- Add Match Data --------
-		string data = MatchDataToCsv.Serialize(newMatchDataDto.MatchData);
+		string data = MatchDataToCsv.Serialize(newMatchDataDto.Data);
 
 		SqliteCommand addMatchData = new(
 			$"""
 			 INSERT INTO "{nameof(Tables.MatchData)}" (
 			     "{Tables.MatchData.DeviceId}",
-			     "{Tables.MatchData.MatchId}",
+			     "{Tables.MatchData.MatchId}"
 			     "{Tables.MatchData.OriginalDeviceId}",
 			     "{Tables.MatchData.OriginalMatchId}",
 			     "{Tables.MatchData.GameDeviceId}",
@@ -917,7 +853,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Update Record Index Table --------
-		MatchIndexMetaData metaData = MatchIndexMetaData.CreateStoredMatch(newMatchDataDto.GameDeviceId, newMatchDataDto.GameId, eventDataId);
+		MatchIndexMetaData metaData = MatchIndexMetaData.CreateStoredMatch(newMatchDataDto.GameDeviceId, newMatchDataDto.GameId, newMatchDataDto.EventCode);
 
 		Result updateIndexResult = await Indexer.SetMatchIndexMetaData(newMatchDataDto.DeviceId, nextMatchId, metaData);
 		if (updateIndexResult.IsFailure) {
@@ -930,10 +866,24 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			return await RollbackError.TryRollback(commitResult.Error, Connection);
 		}
 
-		return Result.Success;
+		CreateMatchDataDtoResult createMatchDataDtoResult = MatchDataDto.Create(
+			matchData: newMatchDataDto.Data,
+			deviceId: newMatchDataDto.DeviceId,
+			matchId: nextMatchId,
+			originalDeviceId: newMatchDataDto.DeviceId,
+			originalMatchId: nextMatchId,
+			parents: [],
+			gameDeviceId: newMatchDataDto.GameDeviceId,
+			gameId: newMatchDataDto.GameId);
+
+		if (createMatchDataDtoResult.IsFailure) {
+			return new AdHocError("Error creating MatchDataDto from provided newMatchId.", createMatchDataDtoResult.Error, ("nextMatchId", nextMatchId.ToString()));
+		}
+
+		return createMatchDataDtoResult.Value;
 	}
 
-	public async Task<Result> AddNewEditedMatchData(NewEditedMatchDataDto newEditedMatchDataDto) {
+	public async Task<Result<MatchDataDto>> AddEditedMatchData(EditedMatchDataDto editedMatchDataDto) {
 
 		// -------- Open Transaction --------
 		SqliteCommand beginTransaction = new("BEGIN TRANSACTION;", Connection);
@@ -960,7 +910,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		long nextMatchId = getMatchIdResult.Value + 1;
 
 		// -------- Add Match Data --------
-		string data = MatchDataToCsv.Serialize(newEditedMatchDataDto.MatchData);
+		string data = MatchDataToCsv.Serialize(editedMatchDataDto.Data);
 
 		SqliteCommand addMatchData = new(
 			$"""
@@ -985,12 +935,12 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 """,
 			Connection);
 
-		addMatchData.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = newEditedMatchDataDto.DeviceId });
+		addMatchData.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = editedMatchDataDto.DeviceId });
 		addMatchData.Parameters.Add(new("@NextMatchId", SqliteType.Integer) { Value = nextMatchId });
-		addMatchData.Parameters.Add(new("@OriginalDeviceId", SqliteType.Text) { Value = newEditedMatchDataDto.OriginalDeviceId });
-		addMatchData.Parameters.Add(new("@OriginalMatchId", SqliteType.Integer) { Value = newEditedMatchDataDto.OriginalMatchId });
-		addMatchData.Parameters.Add(new("@GameDeviceId", SqliteType.Text) { Value = newEditedMatchDataDto.GameDeviceId });
-		addMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = newEditedMatchDataDto.GameId });
+		addMatchData.Parameters.Add(new("@OriginalDeviceId", SqliteType.Text) { Value = editedMatchDataDto.OriginalDeviceId });
+		addMatchData.Parameters.Add(new("@OriginalMatchId", SqliteType.Integer) { Value = editedMatchDataDto.OriginalMatchId });
+		addMatchData.Parameters.Add(new("@GameDeviceId", SqliteType.Text) { Value = editedMatchDataDto.GameDeviceId });
+		addMatchData.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = editedMatchDataDto.GameId });
 		addMatchData.Parameters.Add(new("@Data", SqliteType.Text) { Value = data });
 
 		ExecuteNonQueryAndExpectResult addMatchDataResult = await addMatchData.ExecuteNonQueryAndExpect(1);
@@ -1013,9 +963,10 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Update Record Index Table --------
-		MatchIndexMetaData metaData = MatchIndexMetaData.CreateStoredMatch(newEditedMatchDataDto.GameDeviceId, newEditedMatchDataDto.GameId, eventDataId);
+		MatchIndexMetaData metaData = MatchIndexMetaData.CreateStoredMatch(
+			editedMatchDataDto.GameDeviceId, editedMatchDataDto.GameId, editedMatchDataDto.EventCode);
 
-		Result updateIndexResult = await Indexer.SetMatchIndexMetaData(newEditedMatchDataDto.DeviceId, nextMatchId, metaData);
+		Result updateIndexResult = await Indexer.SetMatchIndexMetaData(editedMatchDataDto.DeviceId, nextMatchId, metaData);
 		if (updateIndexResult.IsFailure) {
 			return await RollbackError.TryRollback(updateIndexResult.Error, Connection);
 		}
@@ -1027,7 +978,21 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			return await RollbackError.TryRollback(commitResult.Error, Connection);
 		}
 
-		return Result.Success;
+		CreateMatchDataDtoResult createMatchDataDtoResult = MatchDataDto.Create(
+			matchData: editedMatchDataDto.Data,
+			deviceId: editedMatchDataDto.DeviceId,
+			matchId: nextMatchId,
+			originalDeviceId: editedMatchDataDto.DeviceId,
+			originalMatchId: nextMatchId,
+			parents: [],
+			gameDeviceId: editedMatchDataDto.GameDeviceId,
+			gameId: editedMatchDataDto.GameId);
+
+		if (createMatchDataDtoResult.IsFailure) {
+			return new AdHocError("Error creating MatchDataDto from provided newMatchId.", createMatchDataDtoResult.Error, ("nextMatchId", nextMatchId.ToString()));
+		}
+
+		return createMatchDataDtoResult.Value;
 	}
 
 	public async Task<Result> ImportMatchData(MatchDataDto importMatchDataDto) {
@@ -1040,7 +1005,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Add Match Data --------
-		string data = MatchDataToCsv.Serialize(importMatchDataDto.MatchData);
+		string data = MatchDataToCsv.Serialize(importMatchDataDto.Data);
 
 		SqliteCommand addMatchData = new(
 			$"""
@@ -1079,7 +1044,8 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Update Record Index Table --------
-		MatchIndexMetaData metaData = MatchIndexMetaData.CreateStoredMatch(importMatchDataDto.GameDeviceId, importMatchDataDto.GameId, eventDataId);
+		MatchIndexMetaData metaData = MatchIndexMetaData.CreateStoredMatch(
+			importMatchDataDto.GameDeviceId, importMatchDataDto.GameId, importMatchDataDto.EventCode);
 
 		Result updateIndexResult = await Indexer.SetMatchIndexMetaData(importMatchDataDto.DeviceId, importMatchDataDto.MatchId, metaData);
 		if (updateIndexResult.IsFailure) {
@@ -1139,7 +1105,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return Result.Success;
 	}
 
-	public async Task<Result> DeleteMatchDataFromEvent(EventDto eventDto) {
+	public async Task<Result> DeleteMatchDataFromEvent(string eventCode) {
 
 		// -------- Open Transaction --------
 		BeginTransactionResult beginResult = await Connection.OpenTransaction();
@@ -1151,13 +1117,11 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		SqliteCommand deleteMatchData = new(
 			$"""
 			 DELETE FROM "{nameof(Tables.MatchData)}"
-			 WHERE "{Tables.MatchData.EventDeviceId}" = @EventDeviceId
-			   AND "{Tables.MatchData.EventMetaDataId}" = @EventMetaDataId;
+			 WHERE "{Tables.MatchData.EventCode}" = @EventCode;
 			 """,
 			Connection);
 
-		deleteMatchData.Parameters.Add(new("@EventDeviceId", SqliteType.Text) { Value = eventDto.DeviceId });
-		deleteMatchData.Parameters.Add(new("@EventMetaDataId", SqliteType.Integer) { Value = eventDto.MetaDataId });
+		deleteMatchData.Parameters.Add(new("@EventCode", SqliteType.Text) { Value = eventCode });
 
 		ExecuteNonQueryUncheckedResult deleteMatchResult = await deleteMatchData.ExecuteNonQueryUnchecked();
 		if (deleteMatchResult.IsFailure) {
@@ -1167,7 +1131,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		// -------- Update Record Index Table --------
 		MatchIndexMetaData metaData = MatchIndexMetaData.CreateNoneMatch();
 
-		Result updateIndexResult = await Indexer.SetMatchIndexMetaData(eventDto, metaData);
+		Result updateIndexResult = await Indexer.SetMatchIndexMetaData(eventCode, metaData);
 		if (updateIndexResult.IsFailure) {
 			return await RollbackError.TryRollback(updateIndexResult.Error, Connection);
 		}

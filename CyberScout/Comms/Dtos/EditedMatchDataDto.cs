@@ -5,9 +5,9 @@ namespace Comms.Dtos;
 
 
 
-public class NewEditedMatchDataDto {
+public class EditedMatchDataDto {
 
-	public required MatchData MatchData { get; init; }
+	public required MatchData Data { get; init; }
 
 	public required string DeviceId { get; init; }
 
@@ -21,24 +21,20 @@ public class NewEditedMatchDataDto {
 
 	public required long GameId { get; init; }
 
-	public required string EventDeviceId { get; init; }
-
-	public required long EventMetaDataId { get; init; }
+	public string EventCode => Data.EventCode;
 
 
 
-	private NewEditedMatchDataDto() { }
+	private EditedMatchDataDto() { }
 
-	public static NewEditedMatchDataDto? Create(
+	public static EditedMatchDataDto? Create(
 		MatchData matchData,
 		string deviceId,
 		string originalDeviceId,
 		long originalMatchId,
 		List<(string deviceId, long matchId)> parents,
 		string gameDeviceId,
-		long gameId,
-		string eventDeviceId,
-		long eventId) {
+		long gameId) {
 
 		// There must be at least one parent.
 		if (parents.Count == 0) {
@@ -54,15 +50,13 @@ public class NewEditedMatchDataDto {
 		}
 
 		return new() {
-			MatchData = matchData,
+			Data = matchData,
 			DeviceId = deviceId,
 			OriginalDeviceId = originalDeviceId,
 			OriginalMatchId = originalMatchId,
 			Parents = parents,
 			GameDeviceId = gameDeviceId,
-			GameId = gameId,
-			EventDeviceId = eventDeviceId,
-			EventMetaDataId = eventId
+			GameId = gameId
 		};
 	}
 

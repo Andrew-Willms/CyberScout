@@ -17,7 +17,8 @@ public class MatchData : IEquatable<MatchData> {
 
 	public string ScoutName { get; private init; }
 
-	public string? EventCode { get; private init; }
+	// Empty indicates no EventCode
+	public string EventCode { get; private init; }
 
 	public Match Match { get; private init; }
 

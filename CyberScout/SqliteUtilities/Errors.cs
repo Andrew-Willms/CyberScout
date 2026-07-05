@@ -80,7 +80,7 @@ public record RollbackError<TError> : Error where TError : Error {
 
 	public required TError InitialError { get; init; }
 
-	public required ExecuteNonQueryAndExpectError? SecondError { get; init; }
+	public required ExecuteNonQueryUncheckedError? SecondError { get; init; }
 
 	protected RollbackError() { }
 
@@ -96,7 +96,7 @@ public record RollbackError<TError> : Error where TError : Error {
 	public static async Task<Error> TryRollback(TError firstError, SqliteConnection connection) {
 
 		SqliteCommand rollbackCommand = new("ROLLBACK;", connection);
-		ExecuteNonQueryAndExpectResult result = await rollbackCommand.ExecuteNonQueryUnchecked();
+		ExecuteNonQueryUncheckedResult result = await rollbackCommand.ExecuteNonQueryUnchecked();
 
 		if (result.IsFailure) {
 			return new RollbackError<TError> {

@@ -159,7 +159,7 @@ public partial class QrCodeScanner : ContentPage {
 			StringBuilder stringBuilder = new(MatchDataToCsv.GetCsvHeaders(AppManager.GameSpecification));
 			foreach (MatchDataDto matchDataDto in matchData) {
 				stringBuilder.Append('\n');
-				stringBuilder.Append(MatchDataToCsv.Serialize(matchDataDto.MatchData));
+				stringBuilder.Append(MatchDataToCsv.Serialize(matchDataDto.Data));
 			}
 
 			string saveDirectory =

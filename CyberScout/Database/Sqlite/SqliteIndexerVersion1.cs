@@ -89,9 +89,9 @@ public class SqliteIndexerVersion1 {
 		return await SetMatchIndexMetaData(rangesResult.Value, newMetaData);
 	}
 
-	public async Task<Result> SetMatchIndexMetaData(EventDto eventDto, MatchIndexMetaData newMetaData) {
+	public async Task<Result> SetMatchIndexMetaData(string eventCode, MatchIndexMetaData newMetaData) {
 
-		Result<List<IndexRange>> rangesResult = await GetMatchIndexRanges(eventDto);
+		Result<List<IndexRange>> rangesResult = await GetMatchIndexRanges(eventCode);
 
 		if (rangesResult.IsFailure) {
 			return new AdHocError("Error getting ranges.", rangesResult.Error);
@@ -221,34 +221,16 @@ public class SqliteIndexerVersion1 {
 		return await GetMatchIndexRanges(getIndexRanges, RecordType.Game);
 	}
 
-	private async Task<Result<List<IndexRange>>> GetMatchIndexRanges(EventDto eventDto) {
-
-		SqliteCommand getEventDataId = new(
-			$"""
-			 SELECT "{Tables.EventMetaData.DataId}" FROM "{nameof(Tables.EventMetaData)}"
-			 WHERE "{Tables.EventMetaData.DeviceId}" = @DeviceId
-			   AND "{Tables.EventMetaData.MetaDataId}" <= @MetaDataId
-			 """,
-			Connection);
-
-		getEventDataId.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = eventDto.DeviceId });
-		getEventDataId.Parameters.Add(new("@MetaDataId", SqliteType.Integer) { Value = eventDto.MetaDataId });
-
-		IntegerScalarResult getEventDataIdResult = await getEventDataId.ExecuteIntegerScalar();
-		if (getEventDataIdResult.IsFailure) {
-			return new AdHocError("Error getting EventDataId", getEventDataIdResult.Error);
-		}
-
-		long eventDataId = getEventDataIdResult.Value;
+	private async Task<Result<List<IndexRange>>> GetMatchIndexRanges(string eventCode) {
 
 		SqliteCommand getIndexRanges = new(
 			$"""
 			 SELECT * FROM "{nameof(Tables.MatchIndex)}"
-			 WHERE "{Tables.MatchIndex.EventDataId}" = @EventDataId
+			 WHERE "{Tables.MatchIndex.EventCode}" = @EventCode
 			 """,
 			Connection);
 
-		getIndexRanges.Parameters.Add(new("@EventDataId", SqliteType.Text) { Value = eventDataId });
+		getIndexRanges.Parameters.Add(new("@EventCode", SqliteType.Text) { Value = eventCode });
 
 		return await GetMatchIndexRanges(getIndexRanges, RecordType.Event);
 	}
@@ -335,11 +317,11 @@ public class SqliteIndexerVersion1 {
 		}
 		OneOf<long, None> gameId = gameIdResult.Value;
 
-		GetNullableIntegerResult eventDataIdResult = reader.SafeGetNullableInteger(Tables.MatchIndex.EventDataId);
-		if (eventDataIdResult.IsFailure) {
-			return new AdHocError("Error getting GameId.", eventDataIdResult.Error);
+		GetNullableTextResult eventCodeResult = reader.SafeGetNullableText(Tables.MatchIndex.EventCode);
+		if (eventCodeResult.IsFailure) {
+			return new AdHocError("Error getting GameId.", eventCodeResult.Error);
 		}
-		OneOf<long, None> eventDataId = eventDataIdResult.Value.Value;
+		OneOf<string, None> eventDataId = eventCodeResult.Value.Value;
 
 		MatchIndexMetaData metaData;
 		if (status == RecordStatus.Stored) {
@@ -586,7 +568,7 @@ public class SqliteIndexerVersion1 {
 					     "{Tables.MatchIndex.Status}",
 					     "{Tables.MatchIndex.GameDeviceId}",
 					     "{Tables.MatchIndex.GameId}",
-					     "{Tables.MatchIndex.EventDataId}"
+					     "{Tables.MatchIndex.EventCode}"
 					 )
 					 VALUES (
 					     @DeviceId,
@@ -595,7 +577,7 @@ public class SqliteIndexerVersion1 {
 					     @Status,
 					     @GameDeviceId,
 					     @GameId,
-					     @EventDataId,
+					     @EventCode,
 					 );
 					 """,
 					Connection);
@@ -606,7 +588,7 @@ public class SqliteIndexerVersion1 {
 				addRecordRange.Parameters.Add(new("@Status", SqliteType.Text) { Value = metaData.Status });
 				addRecordRange.Parameters.Add(new("@GameDeviceId", SqliteType.Text) { Value = metaData.GameDeviceId });
 				addRecordRange.Parameters.Add(new("@GameId", SqliteType.Text) { Value = metaData.GameId });
-				addRecordRange.Parameters.Add(new("@EventDataId", SqliteType.Text) { Value = metaData.EventDataId });
+				addRecordRange.Parameters.Add(new("@EventCode", SqliteType.Text) { Value = metaData.EventCode });
 				break;
 
 			default:

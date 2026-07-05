@@ -29,7 +29,7 @@ public record MatchIndexMetaData : RecordMetaData  {
 
 	public required long? GameId { get; init; }
 
-	public required long? EventDataId { get; init; }
+	public required string? EventCode { get; init; }
 
 	private MatchIndexMetaData() { }
 
@@ -39,17 +39,17 @@ public record MatchIndexMetaData : RecordMetaData  {
 			Status = RecordStatus.None,
 			GameDeviceId = null,
 			GameId = null,
-			EventDataId = null
+			EventCode = null
 		};
 	}
 
-	public static MatchIndexMetaData CreateStoredMatch(string gameDeviceId, long gameId, long eventDataId) {
+	public static MatchIndexMetaData CreateStoredMatch(string gameDeviceId, long gameId, string eventCode) {
 
 		return new() {
 			Status = RecordStatus.Stored,
 			GameDeviceId = gameDeviceId,
 			GameId = gameId,
-			EventDataId = eventDataId
+			EventCode = eventCode
 		};
 	}
 
@@ -59,7 +59,7 @@ public record MatchIndexMetaData : RecordMetaData  {
 			Status = RecordStatus.Ignored,
 			GameDeviceId = null,
 			GameId = null,
-			EventDataId = null
+			EventCode = null
 		};
 	}
 
@@ -262,14 +262,29 @@ public record SuperRange {
 				continue;
 			}
 
-			simplifiedRanges.Add(IndexRange.Create(DeviceId, currentStart, range.Start - 1, currentStatus) ?? throw new UnreachableException());
+			Result<IndexRange> createRangeResult = IndexRange.Create(DeviceId, currentStart, range.Start - 1, currentStatus);
+			if (createRangeResult.IsFailure) {
+				throw new UnreachableException();
+			}
+
+			simplifiedRanges.Add(createRangeResult.Value);
 			currentStart = range.Start;
 			currentStatus = range.MetaData;
 		}
 
-		simplifiedRanges.Add(IndexRange.Create(DeviceId, currentStart, Ranges.Last().End, currentStatus) ?? throw new UnreachableException());
+		Result<IndexRange> createLastRangeResult = IndexRange.Create(DeviceId, currentStart, Ranges.Last().End, currentStatus);
+		if (createLastRangeResult.IsFailure) {
+			throw new UnreachableException();
+		}
 
-		return Create(simplifiedRanges) ?? throw new UnreachableException();
+		simplifiedRanges.Add(createLastRangeResult.Value);
+
+		Result<SuperRange> createSuperRangeResult = Create(simplifiedRanges);
+		if (createSuperRangeResult.IsFailure) {
+			throw new UnreachableException();
+		}
+
+		return createSuperRangeResult.Value;
 	}
 
 }

@@ -24,10 +24,8 @@ public static class MatchDataDtoToCsv {
 		nameof(MatchDataDto.Parents) + ',' +
 		nameof(MatchDataDto.GameDeviceId) + ',' +
 		nameof(MatchDataDto.GameId) + ',' +
-		nameof(MatchDataDto.EventDeviceId) + ',' +
-		nameof(MatchDataDto.EventMetaDataId) + ',' +
-		nameof(MatchData.ScoutName) + ',' +
 		nameof(MatchData.EventCode) + ',' +
+		nameof(MatchData.ScoutName) + ',' +
 		nameof(MatchData.Match.MatchNumber) + ',' +
 		nameof(MatchData.Match.Type) + ',' +
 		nameof(MatchData.Match.ReplayNumber) + ',' +
@@ -36,7 +34,7 @@ public static class MatchDataDtoToCsv {
 		nameof(MatchData.StartTime) + ',' +
 		nameof(MatchData.EndTime) + ',';
 
-	private const int FixedFieldCount = 17;
+	private const int FixedFieldCount = 15;
 
 	public static string GetCsvHeaders(GameSpec gameSpecification) {
 
@@ -50,7 +48,7 @@ public static class MatchDataDtoToCsv {
 	public static string Serialize(MatchDataDto importMatchData) {
 
 		// Estimate the device and match IDs will be about 50 characters and each field will take about 5.
-		StringBuilder stringBuilder = new(50 + importMatchData.MatchData.GameSpecification.DataFields.Count * 5);
+		StringBuilder stringBuilder = new(50 + importMatchData.Data.GameSpecification.DataFields.Count * 5);
 		stringBuilder.Append(importMatchData.DeviceId);
 		stringBuilder.Append(',');
 		stringBuilder.Append(importMatchData.MatchId);
@@ -68,31 +66,27 @@ public static class MatchDataDtoToCsv {
 		stringBuilder.Append(',');
 		stringBuilder.Append(importMatchData.GameId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.EventDeviceId);
+		stringBuilder.Append(importMatchData.Data.ScoutName.ToCsvFriendly());
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.EventMetaDataId);
+		stringBuilder.Append(importMatchData.Data.EventCode);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.MatchData.ScoutName.ToCsvFriendly());
+		stringBuilder.Append(importMatchData.Data.Match.MatchNumber);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.MatchData.EventCode);
+		stringBuilder.Append((int)importMatchData.Data.Match.Type);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.MatchData.Match.MatchNumber);
+		stringBuilder.Append(importMatchData.Data.Match.ReplayNumber);
 		stringBuilder.Append(',');
-		stringBuilder.Append((int)importMatchData.MatchData.Match.Type);
+		stringBuilder.Append(importMatchData.Data.AllianceIndex);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.MatchData.Match.ReplayNumber);
+		stringBuilder.Append(importMatchData.Data.TeamNumber);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.MatchData.AllianceIndex);
+		stringBuilder.Append(importMatchData.Data.StartTime.ToString("o").ToCsvFriendly());
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.MatchData.TeamNumber);
-		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.MatchData.StartTime.ToString("o").ToCsvFriendly());
-		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.MatchData.EndTime.ToString("o").ToCsvFriendly());
+		stringBuilder.Append(importMatchData.Data.EndTime.ToString("o").ToCsvFriendly());
 
-		for (int i = 0; i < importMatchData.MatchData.DataFields.Count; i++) {
+		for (int i = 0; i < importMatchData.Data.DataFields.Count; i++) {
 
-			switch (importMatchData.MatchData.GameSpecification.DataFields[i], importMatchData.MatchData.DataFields[i]) {
+			switch (importMatchData.Data.GameSpecification.DataFields[i], importMatchData.Data.DataFields[i]) {
 				case (BooleanDataFieldSpec, bool value): {
 					stringBuilder.Append(value ? ",1" : ",0");
 					break;
@@ -149,17 +143,15 @@ public static class MatchDataDtoToCsv {
 		string parentsText = columns[4];
 		string gameDeviceId = columns[5];
 		success &= long.TryParse(columns[6], out long gameId);
-		string eventDeviceId = columns[7];
-		success &= long.TryParse(columns[8], out long eventId);
-		string scoutName = columns[9];
-		string eventCode = columns[10];
-		success &= uint.TryParse(columns[11], out uint matchNumber);
-		success &= Enum.TryParse(columns[12], out MatchType type);
-		success &= uint.TryParse(columns[13], out uint replayNumber);
-		success &= uint.TryParse(columns[14], out uint allianceIndex);
-		success &= uint.TryParse(columns[15], out uint teamNumber);
-		success &= DateTime.TryParse(columns[16], out DateTime startTime);
-		success &= DateTime.TryParse(columns[17], out DateTime endTime);
+		string eventCode = columns[7];
+		string scoutName = columns[8];
+		success &= uint.TryParse(columns[9], out uint matchNumber);
+		success &= Enum.TryParse(columns[10], out MatchType type);
+		success &= uint.TryParse(columns[11], out uint replayNumber);
+		success &= uint.TryParse(columns[12], out uint allianceIndex);
+		success &= uint.TryParse(columns[13], out uint teamNumber);
+		success &= DateTime.TryParse(columns[14], out DateTime startTime);
+		success &= DateTime.TryParse(columns[15], out DateTime endTime);
 
 		if (!success) {
 			return null;
@@ -265,10 +257,8 @@ public static class MatchDataDtoToCsv {
 			originalMatchId: originalMatchId,
 			parents: parents,
 			gameDeviceId: gameDeviceId,
-			gameId: gameId,
-			eventDeviceId: eventDeviceId,
-			eventMetaDataId: eventId
-		);
+			gameId: gameId
+		).Value;
 	}
 
 }

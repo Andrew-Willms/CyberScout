@@ -57,9 +57,9 @@
 								Margin="5">
 								<Label.Text>
 									<MultiBinding StringFormat='{}{0} - {1} Match {2}'>
-										<Binding Path="MatchData.TeamNumber" />
-										<Binding Path="MatchData.Match.Type" />
-										<Binding Path="MatchData.Match.MatchNumber" />
+										<Binding Path="Data.TeamNumber" />
+										<Binding Path="Data.Match.Type" />
+										<Binding Path="Data.Match.MatchNumber" />
 									</MultiBinding>
 								</Label.Text>
 							</Label>
