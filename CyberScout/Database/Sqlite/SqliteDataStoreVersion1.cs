@@ -1,6 +1,5 @@
 ﻿using Comms.Dtos;
 using Comms.Serialization;
-using Database.Results;
 using Domain.Data;
 using Microsoft.Data.Sqlite;
 using SqliteUtilities;
@@ -797,7 +796,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		if (getMatchIdResult.Value == long.MaxValue) {
-			return await RollbackError.TryRollback(new TableOverflowError(), Connection);
+			return await RollbackError.TryRollback(new AdHocError("Table overflow."), Connection);
 		}
 
 		long nextMatchId = getMatchIdResult.Value + 1;
@@ -904,7 +903,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		if (getMatchIdResult.Value == long.MaxValue) {
-			return await RollbackError.TryRollback(new TableOverflowError(), Connection);
+			return await RollbackError.TryRollback(new AdHocError("Table overflow."), Connection);
 		}
 
 		long nextMatchId = getMatchIdResult.Value + 1;
