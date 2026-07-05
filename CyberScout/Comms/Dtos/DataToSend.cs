@@ -1,7 +1,8 @@
-﻿using Domain.Data;
+﻿using System.Collections.Generic;
+using Domain.Data;
 using Domain.GameSpecification;
 
-namespace Database;
+namespace Comms.Dtos;
 
 
 
