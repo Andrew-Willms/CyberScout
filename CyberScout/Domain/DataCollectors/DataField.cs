@@ -83,8 +83,8 @@ public class TextDataField : DataField {
 			List<string> errors = [];
 
 			if (Value == string.Empty &&
-			    (Specification.MustNotBeEmpty ||
-			     Specification is { MustNotBeInitialValue: true, InitialValue: "" })) {
+				(Specification.MustNotBeEmpty ||
+				 Specification is { MustNotBeInitialValue: true, InitialValue: "" })) {
 
 				errors.Add($"The data field \"{Name}\" is empty.");
 			}
@@ -168,7 +168,7 @@ public class SelectionDataField : DataField {
 	public override List<string> Errors {
 		get {
 			if (Specification.RequiresValue && (Value == Optional.NoValue || Value.Value == string.Empty)) {
-				return [ $"The data field \"{Name}\" requires a value." ];
+				return [$"The data field \"{Name}\" requires a value."];
 			}
 
 			// TODO: I have to add these extra cases because somehow the value gets set to an empty string, maybe look into seeing

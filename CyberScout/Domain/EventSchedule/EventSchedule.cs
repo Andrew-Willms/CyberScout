@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
-using Domain.Data;
+using Domain.Errors;
+using Domain.GameSpecification;
 using OneOf;
 using UtilitiesLibrary.Collections;
 
-namespace Domain.GameSpecification;
+namespace Domain.EventSchedule;
 
 
 

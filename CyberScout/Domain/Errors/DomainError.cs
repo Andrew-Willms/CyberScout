@@ -1,8 +1,9 @@
 ﻿using System;
 using Domain.GameSpecification;
+using Domain.MatchData;
 using UtilitiesLibrary.Collections;
 
-namespace Domain.Data;
+namespace Domain.Errors;
 
 
 

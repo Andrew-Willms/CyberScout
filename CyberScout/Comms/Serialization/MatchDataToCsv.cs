@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using Domain.Data;
 using Domain.GameSpecification;
+using Domain.MatchData;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.MiscExtensions;
 using UtilitiesLibrary.Optional;

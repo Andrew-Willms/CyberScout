@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Domain.Data;
 using Domain.GameSpecification;
+using Domain.MatchData;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Optional;
 
-namespace Domain.DataCollectors; 
+namespace Domain.DataCollectors;
 
 
 // TODO: make this equatable?
@@ -18,7 +18,7 @@ public class MatchDataCollector {
 
 	public Optional<uint> MatchNumber { get; set; } = Optional.NoValue;
 	public Optional<uint> ReplayNumber { get; set; } = 0u.Optionalize();
-	public Optional<MatchType> MatchType { get; set; } = Data.MatchType.Qualification.Optionalize();
+	public Optional<MatchType> MatchType { get; set; } = MatchData.MatchType.Qualification.Optionalize();
 
 	public Optional<uint> TeamNumber { get; set; } = Optional.NoValue;
 

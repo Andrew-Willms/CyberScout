@@ -1,11 +1,10 @@
 ﻿using System.Collections;
 using System.Drawing;
-using Domain.Data;
 using Domain.GameSpecification;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Optional;
 using UtilitiesLibrary.Results;
-using MatchType = Domain.Data.MatchType;
+using MatchType = Domain.MatchData.MatchType;
 
 namespace Domain.Tests.Serialization;
 

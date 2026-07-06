@@ -44,7 +44,7 @@ public static class NonQueryExtensions {
 
 		try {
 			await command.ExecuteNonQueryAsync();
-			return ExecuteNonQueryAndExpectResult.Success;
+			return ExecuteNonQueryUncheckedResult.Success;
 
 		} catch (SqliteException exception) {
 			return new SqliteExceptionError(exception, command);

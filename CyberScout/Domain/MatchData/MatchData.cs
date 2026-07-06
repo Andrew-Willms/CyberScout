@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Domain.DataCollectors;
+using Domain.Errors;
 using Domain.GameSpecification;
+using Domain.MatchData;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Optional;
 
@@ -37,7 +39,7 @@ public class MatchData : IEquatable<MatchData> {
 	private MatchData(
 		GameSpec gameSpecification,
 		string? eventCode,
-		EventSchedule? eventSchedule,
+		EventSchedule.EventSchedule? eventSchedule,
 		string scoutName,
 		Match match,
 		uint teamNumber,
@@ -60,7 +62,7 @@ public class MatchData : IEquatable<MatchData> {
 	public static MatchData? FromDataCollector(
 		MatchDataCollector collector,
 		string eventCode,
-		EventSchedule? eventSchedule,
+		EventSchedule.EventSchedule? eventSchedule,
 		string scoutName) {
 
 		List<DomainError> errors = [];
@@ -102,7 +104,7 @@ public class MatchData : IEquatable<MatchData> {
 	public static MatchData? FromRaw(
 		GameSpec gameSpecification,
 		string? eventCode,
-		EventSchedule? eventSchedule,
+		EventSchedule.EventSchedule? eventSchedule,
 		string scoutName,
 		Match match,
 		uint teamNumber,
@@ -143,7 +145,7 @@ public class MatchData : IEquatable<MatchData> {
 		Match match,
 		uint teamNumber,
 		string? eventCode,
-		EventSchedule? eventSchedule) {
+		EventSchedule.EventSchedule? eventSchedule) {
 
 		if (eventSchedule is null) {
 			return;

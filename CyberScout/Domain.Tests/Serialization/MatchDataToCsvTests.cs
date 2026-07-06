@@ -11,7 +11,7 @@ public class MatchDataToCsvTests {
 
 	[Theory]
 	[ClassData(typeof(SampleData))]
-	public void TestSerialization(MatchData matchData) {
+	public void TestSerialization(Data.MatchData matchData) {
 
 		string serialized = MatchDataToCsv.Serialize(matchData);
 		MatchDataDeserializationResult deserializationResult = MatchDataToCsv.Deserialize(serialized, SampleData.GameSpec);
@@ -26,7 +26,7 @@ public class MatchDataToCsvTests {
 
 	[Theory]
 	[ClassData(typeof(SampleData))]
-	public void TestDtoSerialization(MatchData matchData) {
+	public void TestDtoSerialization(Data.MatchData matchData) {
 
 		CreateMatchDataDtoResult result = MatchDataDto.Create(
 			matchData: matchData,
@@ -51,7 +51,7 @@ public class MatchDataToCsvTests {
 
 	[Theory]
 	[ClassData(typeof(SampleData))]
-	public void TestDtoSerialization_2(MatchData matchData) {
+	public void TestDtoSerialization_2(Data.MatchData matchData) {
 
 
 		CreateMatchDataDtoResult result = MatchDataDto.Create(

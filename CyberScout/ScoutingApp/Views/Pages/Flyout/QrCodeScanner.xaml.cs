@@ -6,7 +6,6 @@ using System.Text;
 using Comms.Dtos;
 using Comms.Serialization;
 using Database;
-using Database.Results.MatchData;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using ScoutingApp.AppManagement;

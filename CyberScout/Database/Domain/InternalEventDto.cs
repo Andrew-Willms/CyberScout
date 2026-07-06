@@ -1,4 +1,5 @@
 ﻿using Comms.Dtos;
+using Domain.EventSchedule;
 using Domain.GameSpecification;
 
 namespace Database.Domain;
