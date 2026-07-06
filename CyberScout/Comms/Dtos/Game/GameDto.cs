@@ -1,7 +1,7 @@
 ﻿using System;
 using Domain.GameSpecification;
 
-namespace Comms.Dtos;
+namespace Comms.Dtos.Game;
 
 
 

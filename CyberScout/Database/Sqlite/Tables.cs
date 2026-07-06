@@ -62,7 +62,6 @@ public static class Tables {
 		public const string DeviceId = "DeviceId";
 		public const string EventId = "EventId";
 		public const string TimePublished = "TimePublished";
-		public const string Source = "Source";
 	}
 
 	// -------- Match --------

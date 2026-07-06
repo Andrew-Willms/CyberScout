@@ -1,6 +1,4 @@
-﻿using Comms.Dtos;
-using Domain.EventSchedule;
-using Domain.GameSpecification;
+﻿using Domain.EventSchedule;
 
 namespace Database.Domain;
 
@@ -15,8 +13,6 @@ public record InternalEventDto {
 	public required long DataId { get; init; }
 
 	public required DateTime TimePublished { get; init; }
-
-	public required EventDataSources Source { get; init; }
 
 	public required EventSchedule Event { get; init; }
 

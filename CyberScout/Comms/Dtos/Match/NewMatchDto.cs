@@ -1,10 +1,10 @@
 ﻿using Domain.Data;
 
-namespace Comms.Dtos;
+namespace Comms.Dtos.Match;
 
 
 
-public record NewMatchDataDto {
+public record NewMatchDto {
 
 	public required MatchData Data { get; init; }
 

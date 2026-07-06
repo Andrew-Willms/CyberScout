@@ -7,6 +7,14 @@ namespace Domain.EventSchedule;
 
 
 
+
+public enum EventDataSource {
+	TheBlueAlliance,
+	Manual
+}
+
+
+
 public class EventSchedule {
 
 	public required MatchFormat MatchFormat { get; init; }
@@ -23,6 +31,8 @@ public class EventSchedule {
 
 	public required ReadOnlyList<MatchGroup> MatchGroups { get; set; }
 
+	public required EventDataSource Source { get; init; }
+
 
 
 	public static Result<EventSchedule, CreateEventScheduleError> Create(
@@ -32,7 +42,8 @@ public class EventSchedule {
 		DateTime startDate,
 		DateTime endDate,
 		List<uint> teams,
-		List<MatchGroup> matchGroups) {
+		List<MatchGroup> matchGroups,
+		EventDataSource source) {
 
 		if (startDate > endDate) {
 			return new StartAfterEnd {
@@ -57,7 +68,8 @@ public class EventSchedule {
 			StartDate = startDate,
 			EndDate = endDate,
 			Teams = teams.ToReadOnly(),
-			MatchGroups = matchGroups.ToReadOnly()
+			MatchGroups = matchGroups.ToReadOnly(),
+			Source = source
 		};
 	}
 

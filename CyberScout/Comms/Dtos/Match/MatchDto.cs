@@ -6,11 +6,11 @@ using OneOf;
 using UtilitiesLibrary.Results;
 using Willmsy.AsyncTryResult;
 
-namespace Comms.Dtos;
+namespace Comms.Dtos.Match;
 
 
 
-public class MatchDataDto {
+public class MatchDto {
 
 	public required MatchData Data { get; init; }
 
@@ -47,7 +47,7 @@ public class MatchDataDto {
 
 
 
-	private MatchDataDto() { }
+	private MatchDto() { }
 
 	public static CreateMatchDataDtoResult Create(
 		MatchData matchData,
@@ -87,7 +87,7 @@ public class MatchDataDto {
 			}
 		}
 
-		return new MatchDataDto {
+		return new MatchDto {
 			Data = matchData,
 			DeviceId = deviceId,
 			MatchId = matchId,
@@ -140,13 +140,13 @@ public class MatchDataDto {
 
 }
 
-public record CreateMatchDataDtoResult : AsyncTryResult<MatchDataDto, CreateMatchDataDtoError> {
+public record CreateMatchDataDtoResult : AsyncTryResult<MatchDto, CreateMatchDataDtoError> {
 
-	public CreateMatchDataDtoResult(MatchDataDto value) : base(value) { }
+	public CreateMatchDataDtoResult(MatchDto value) : base(value) { }
 
 	public CreateMatchDataDtoResult(CreateMatchDataDtoError error) : base(error) { }
 
-	public static implicit operator CreateMatchDataDtoResult(MatchDataDto value) {
+	public static implicit operator CreateMatchDataDtoResult(MatchDto value) {
 		return new(value);
 	}
 

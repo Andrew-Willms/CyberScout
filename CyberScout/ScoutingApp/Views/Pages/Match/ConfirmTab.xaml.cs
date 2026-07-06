@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Comms.Dtos;
+using Comms.Dtos.Match;
 using Domain.DataCollectors;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
@@ -130,8 +131,8 @@ public partial class ConfirmTab : ContentPage, INotifyPropertyChanged {
 #endif
 
 			GetMatchDataResult getMatchDataResult = await AppManager.DataStore.GetMatchData();
-			List<MatchDataDto>? allData = getMatchDataResult.IsT0 ? getMatchDataResult.AsT0 : null;
-			MatchDataDto? mostRecentMatch = allData?.Where(x => x.DeviceId == deviceId).MaxBy(x => x.RecordId);
+			List<MatchDto>? allData = getMatchDataResult.IsT0 ? getMatchDataResult.AsT0 : null;
+			MatchDto? mostRecentMatch = allData?.Where(x => x.DeviceId == deviceId).MaxBy(x => x.RecordId);
 
 			// TODO: This seems like bad error handling
 			if (mostRecentMatch is null) {
@@ -197,9 +198,9 @@ public partial class ConfirmTab : ContentPage, INotifyPropertyChanged {
 
 
 
-	private async Task<bool> DeleteMatch(MatchDataDto importMatchData) {
+	private async Task<bool> DeleteMatch(MatchDto importMatch) {
 
-		return await AppManager.DataStore.DeleteMatchData(importMatchData);
+		return await AppManager.DataStore.DeleteMatchData(importMatch);
 	}
 
 

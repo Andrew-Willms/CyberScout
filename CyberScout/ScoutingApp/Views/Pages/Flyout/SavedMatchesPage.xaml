@@ -5,6 +5,7 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 	xmlns:flyout="clr-namespace:ScoutingApp.Views.Pages.Flyout"
 	xmlns:dtos="clr-namespace:Comms.Dtos;assembly=Comms"
+	xmlns:match="clr-namespace:Comms.Dtos.Match;assembly=Comms"
 	x:Class="ScoutingApp.Views.Pages.Flyout.SavedMatchesPage"
 	x:DataType="flyout:SavedMatchesPage"
 	Loaded="SavedMatchesPage_OnLoaded"
@@ -44,7 +45,7 @@
 				ItemsLayout="VerticalGrid, 1">
 
 				<CollectionView.ItemTemplate>
-					<DataTemplate x:DataType="dtos:MatchDataDto">
+					<DataTemplate x:DataType="match:MatchDto">
 						<Grid Margin="0">
 
 							<Grid.ColumnDefinitions>

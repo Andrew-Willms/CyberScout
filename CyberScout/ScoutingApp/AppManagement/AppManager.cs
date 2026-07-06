@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Threading.Tasks;
 using Comms.Dtos;
+using Comms.Dtos.Match;
 using Database;
 using Domain.Data;
 using Domain.DataCollectors;
@@ -212,7 +213,7 @@ public class AppManager : INotifyPropertyChanged {
 		StartNewMatch();
 	}
 
-	public void DiscardAndStartEditingMatch(MatchDataDto importMatchData) {
+	public void DiscardAndStartEditingMatch(MatchDto importMatch) {
 
 		// todo fix this, the check is broken and returns false when it should return true I think
 		//if (!matchData.MatchData.GameSpecification.Equals(GameSpecification)) {
@@ -220,17 +221,17 @@ public class AppManager : INotifyPropertyChanged {
 		//}
 
 		ActiveMatchData = new(GameSpecification) {
-			MatchNumber = importMatchData.Data.Match.MatchNumber,
-			ReplayNumber = importMatchData.Data.Match.ReplayNumber,
-			MatchType = importMatchData.Data.Match.Type,
-			TeamNumber = importMatchData.Data.TeamNumber,
-			Alliance = importMatchData.Data.AllianceIndex,
-			EditOf = (importMatchData.DeviceId, importMatchData.RecordId)
+			MatchNumber = importMatch.Data.Match.MatchNumber,
+			ReplayNumber = importMatch.Data.Match.ReplayNumber,
+			MatchType = importMatch.Data.Match.Type,
+			TeamNumber = importMatch.Data.TeamNumber,
+			Alliance = importMatch.Data.AllianceIndex,
+			EditOf = (importMatch.DeviceId, importMatch.RecordId)
 		};
 
 		for (int i = 0; i < GameSpecification.DataFields.Count; i++) {
 
-			switch (ActiveMatchData.DataFields[i], importMatchData.Data.DataFields[i]) {
+			switch (ActiveMatchData.DataFields[i], importMatch.Data.DataFields[i]) {
 				case (BooleanDataField booleanDataField, bool boolValue):
 					booleanDataField.Value = boolValue;
 					break;

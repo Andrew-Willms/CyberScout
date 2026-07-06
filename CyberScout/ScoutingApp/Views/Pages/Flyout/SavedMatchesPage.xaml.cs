@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Comms.Dtos;
+using Comms.Dtos.Match;
 using Comms.Serialization;
 using Microsoft.Maui;
 using Microsoft.Maui.ApplicationModel;
@@ -39,7 +40,7 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 		}
 	}
 
-	public ObservableCollection<MatchDataDto> SavedMatches { get; } = [];
+	public ObservableCollection<MatchDto> SavedMatches { get; } = [];
 
 	public bool AnyMatches => SavedMatches.Any();
 
@@ -75,7 +76,7 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 
 		getMatchDataResult.Switch(
 			matchData => {
-				foreach (MatchDataDto match in matchData) {
+				foreach (MatchDto match in matchData) {
 					SavedMatches.Add(match);
 				}
 			},
@@ -108,9 +109,9 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 		MainThread.BeginInvokeOnMainThread(() => { IsRefreshing = false; });
 	}
 
-	private async Task<bool> DeleteMatch(MatchDataDto importMatchData) {
+	private async Task<bool> DeleteMatch(MatchDto importMatch) {
 
-		return await AppManager.DataStore.DeleteMatchData(importMatchData);
+		return await AppManager.DataStore.DeleteMatchData(importMatch);
 	}
 
 
@@ -153,11 +154,11 @@ public partial class SavedMatchesPage : ContentPage, INotifyPropertyChanged {
 
 		try {
 			Button button = sender as Button ?? throw new ArgumentException("sender not valid");
-			MatchDataDto importMatchData = button.BindingContext as MatchDataDto ??
+			MatchDto importMatch = button.BindingContext as MatchDto ??
 			                         throw new ArgumentException("sender not valid");
 
 			Dictionary<string, object> parameters = new() {
-				{ MatchDetailsPage.MatchDataNavigationParameterName, importMatchData },
+				{ MatchDetailsPage.MatchDataNavigationParameterName, importMatch },
 #pragma warning disable CS8974 // Converting method group to non-delegate type
 				{ MatchDetailsPage.MatchDeleterNavigationParameterName, DeleteMatch }
 #pragma warning restore CS8974 // Converting method group to non-delegate type

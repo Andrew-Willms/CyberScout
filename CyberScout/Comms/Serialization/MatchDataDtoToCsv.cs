@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using Comms.Dtos;
+using Comms.Dtos.Match;
 using Domain.Data;
 using Domain.GameSpecification;
-using Domain.MatchData;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.MiscExtensions;
 using UtilitiesLibrary.Optional;
@@ -18,13 +17,13 @@ namespace Comms.Serialization;
 public static class MatchDataDtoToCsv {
 
 	private static readonly string FixedCsvHeader =
-		nameof(MatchDataDto.DeviceId) + ',' +
-		nameof(MatchDataDto.MatchId) + ',' +
-		nameof(MatchDataDto.OriginalDeviceId) + ',' +
-		nameof(MatchDataDto.OriginalMatchId) + ',' +
-		nameof(MatchDataDto.Parents) + ',' +
-		nameof(MatchDataDto.GameDeviceId) + ',' +
-		nameof(MatchDataDto.GameId) + ',' +
+		nameof(MatchDto.DeviceId) + ',' +
+		nameof(MatchDto.MatchId) + ',' +
+		nameof(MatchDto.OriginalDeviceId) + ',' +
+		nameof(MatchDto.OriginalMatchId) + ',' +
+		nameof(MatchDto.Parents) + ',' +
+		nameof(MatchDto.GameDeviceId) + ',' +
+		nameof(MatchDto.GameId) + ',' +
 		nameof(MatchData.EventCode) + ',' +
 		nameof(MatchData.ScoutName) + ',' +
 		nameof(MatchData.Match.MatchNumber) + ',' +
@@ -46,48 +45,48 @@ public static class MatchDataDtoToCsv {
 		return stringBuilder.ToString();
 	}
 
-	public static string Serialize(MatchDataDto importMatchData) {
+	public static string Serialize(MatchDto importMatch) {
 
 		// Estimate the device and match IDs will be about 50 characters and each field will take about 5.
-		StringBuilder stringBuilder = new(50 + importMatchData.Data.GameSpecification.DataFields.Count * 5);
-		stringBuilder.Append(importMatchData.DeviceId);
+		StringBuilder stringBuilder = new(50 + importMatch.Data.GameSpecification.DataFields.Count * 5);
+		stringBuilder.Append(importMatch.DeviceId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.MatchId);
+		stringBuilder.Append(importMatch.MatchId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.OriginalDeviceId);
+		stringBuilder.Append(importMatch.OriginalDeviceId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.OriginalMatchId);
+		stringBuilder.Append(importMatch.OriginalMatchId);
 		stringBuilder.Append(',');
 
 		// List of parents in the format "parent1DeviceId:parent1MatchId;parent2DeviceId:parent2MatchId"
-		stringBuilder.AppendJoin(";", importMatchData.Parents.Select(parent => $"{parent.deviceId}:{parent.matchdId}"));
+		stringBuilder.AppendJoin(";", importMatch.Parents.Select(parent => $"{parent.deviceId}:{parent.matchdId}"));
 		stringBuilder.Append(',');
 
-		stringBuilder.Append(importMatchData.GameDeviceId);
+		stringBuilder.Append(importMatch.GameDeviceId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.GameId);
+		stringBuilder.Append(importMatch.GameId);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.Data.ScoutName.ToCsvFriendly());
+		stringBuilder.Append(importMatch.Data.ScoutName.ToCsvFriendly());
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.Data.EventCode);
+		stringBuilder.Append(importMatch.Data.EventCode);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.Data.Match.MatchNumber);
+		stringBuilder.Append(importMatch.Data.Match.MatchNumber);
 		stringBuilder.Append(',');
-		stringBuilder.Append((int)importMatchData.Data.Match.Type);
+		stringBuilder.Append((int)importMatch.Data.Match.Type);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.Data.Match.ReplayNumber);
+		stringBuilder.Append(importMatch.Data.Match.ReplayNumber);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.Data.AllianceIndex);
+		stringBuilder.Append(importMatch.Data.AllianceIndex);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.Data.TeamNumber);
+		stringBuilder.Append(importMatch.Data.TeamNumber);
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.Data.StartTime.ToString("o").ToCsvFriendly());
+		stringBuilder.Append(importMatch.Data.StartTime.ToString("o").ToCsvFriendly());
 		stringBuilder.Append(',');
-		stringBuilder.Append(importMatchData.Data.EndTime.ToString("o").ToCsvFriendly());
+		stringBuilder.Append(importMatch.Data.EndTime.ToString("o").ToCsvFriendly());
 
-		for (int i = 0; i < importMatchData.Data.DataFields.Count; i++) {
+		for (int i = 0; i < importMatch.Data.DataFields.Count; i++) {
 
-			switch (importMatchData.Data.GameSpecification.DataFields[i], importMatchData.Data.DataFields[i]) {
+			switch (importMatch.Data.GameSpecification.DataFields[i], importMatch.Data.DataFields[i]) {
 				case (BooleanDataFieldSpec, bool value): {
 					stringBuilder.Append(value ? ",1" : ",0");
 					break;
@@ -126,7 +125,7 @@ public static class MatchDataDtoToCsv {
 		return stringBuilder.ToString();
 	}
 
-	public static MatchDataDto? Deserialize(string matchData, GameSpec gameSpecification) {
+	public static MatchDto? Deserialize(string matchData, GameSpec gameSpecification) {
 
 		List<string> columns = matchData.SplitTextToCsvColumns();
 
@@ -250,7 +249,7 @@ public static class MatchDataDtoToCsv {
 			return null;
 		}
 
-		return MatchDataDto.Create(
+		return MatchDto.Create(
 			matchData: matchDataObject,
 			deviceId: deviceId,
 			matchId: matchId,
