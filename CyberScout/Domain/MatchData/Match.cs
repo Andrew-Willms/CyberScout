@@ -8,12 +8,12 @@
 public record Match {
 	
 	/// <summary>
-	/// The name of the <see cref="MatchGroup"/> the match is part of. For example, "Qualification".
+	/// The name of the <see cref="MatchGroupName"/> the match is part of. For example, "Qualification".
 	/// </summary>
-	public required string MatchGroup { get; init; }
+	public required string MatchGroupName { get; init; }
 
 	/// <summary>
-	/// The name of the match within its <see cref="MatchGroup"/>. For example, "Match 1".
+	/// The name of the match within its <see cref="MatchGroupName"/>. For example, "Match 1".
 	/// </summary>
 	public required string MatchName { get; init; }
 

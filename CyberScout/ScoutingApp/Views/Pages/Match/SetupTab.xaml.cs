@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using Domain.Data;
 using Domain.DataCollectors;
 using Domain.MatchData;
 using Microsoft.Maui.Controls;

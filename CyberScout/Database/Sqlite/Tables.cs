@@ -38,11 +38,7 @@ public static class Tables {
 	public static class GameData {
 		public const string DeviceId = "DeviceId";
 		public const string GameId = "GameId";
-		public const string TimePublished = "TimePublished";
 		public const string Data = "Data";
-		public const string MajorVersion = "MajorVersion";
-		public const string MinorVersion = "MinorVersion";
-		public const string PatchVersion = "PatchVersion";
 	}
 
 	// -------- Event --------
@@ -61,7 +57,7 @@ public static class Tables {
 	public static class EventData {
 		public const string DeviceId = "DeviceId";
 		public const string EventId = "EventId";
-		public const string TimePublished = "TimePublished";
+		public const string Data = "Data";
 	}
 
 	// -------- Match --------

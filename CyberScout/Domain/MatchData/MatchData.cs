@@ -5,11 +5,10 @@ using System.Linq;
 using Domain.DataCollectors;
 using Domain.Errors;
 using Domain.GameSpecification;
-using Domain.MatchData;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Optional;
 
-namespace Domain.Data;
+namespace Domain.MatchData;
 
 
 
@@ -28,9 +27,7 @@ public class MatchData : IEquatable<MatchData> {
 
 	public uint TeamNumber { get; private init; }
 
-	public DateTime StartTime { get; private init; }
-
-	public DateTime EndTime { get; private init; }
+	public DateTime TimeStamp { get; private init; }
 
 	public ReadOnlyList<object> DataFields { get; private init; }
 
@@ -44,8 +41,7 @@ public class MatchData : IEquatable<MatchData> {
 		Match match,
 		uint teamNumber,
 		uint allianceIndex,
-		DateTime startTime,
-		DateTime endTime,
+		DateTime timeStamp,
 		ReadOnlyList<object> dataFieldValues) {
 
 		GameSpecification = gameSpecification;
@@ -54,8 +50,7 @@ public class MatchData : IEquatable<MatchData> {
 		Match = match;
 		TeamNumber = teamNumber;
 		AllianceIndex = allianceIndex;
-		StartTime = startTime;
-		EndTime = endTime;
+		TimeStamp = timeStamp;
 		DataFields = dataFieldValues;
 	}
 
@@ -80,7 +75,6 @@ public class MatchData : IEquatable<MatchData> {
 
 		ValidateMatch(errors.Add, match, collector.TeamNumber.Value, eventCode, eventSchedule);
 		ValidateAllianceIndex(errors.Add, collector.GameSpecification, collector.Alliance.Value);
-		ValidateTimes(errors.Add, collector.StartTime, endTime);
 		ValidateDataFields(errors.Add, collector.GameSpecification, collector.DataFields, out ReadOnlyList<object> dataFieldResults);
 
 		if (errors.Any()) {
@@ -96,7 +90,6 @@ public class MatchData : IEquatable<MatchData> {
 			collector.TeamNumber.Value,
 			collector.Alliance.Value,
 			collector.StartTime,
-			endTime,
 			dataFieldResults
 		);
 	}
@@ -110,7 +103,6 @@ public class MatchData : IEquatable<MatchData> {
 		uint teamNumber,
 		uint allianceIndex,
 		DateTime startTime,
-		DateTime endTime,
 		ReadOnlyList<object> dataFieldValues) {
 
 		List<DomainError> errors = [];
@@ -216,16 +208,6 @@ public class MatchData : IEquatable<MatchData> {
 				AllianceIndex = allianceIndex,
 				MaxAllianceIndex = gameSpecification.AlliancesPerMatch - 1
 			});
-		}
-	}
-
-	private static void ValidateTimes(
-		Action<DomainError> errorSink,
-		DateTime startTime,
-		DateTime endTime) {
-
-		if (endTime < startTime) {
-			errorSink(new StartAfterEnd { StartTime = startTime, EndTime = endTime });
 		}
 	}
 
@@ -348,7 +330,7 @@ public class MatchData : IEquatable<MatchData> {
 			Match.Equals(other.Match) &&
 			TeamNumber == other.TeamNumber &&
 			AllianceIndex == other.AllianceIndex &&
-			StartTime.Equals(other.StartTime) &&
+			TimeStamp.Equals(other.TimeStamp) &&
 			EndTime.Equals(other.EndTime);
 	}
 
@@ -377,7 +359,7 @@ public class MatchData : IEquatable<MatchData> {
 		hashCode.Add(Match);
 		hashCode.Add(TeamNumber);
 		hashCode.Add(AllianceIndex);
-		hashCode.Add(StartTime);
+		hashCode.Add(TimeStamp);
 		hashCode.Add(EndTime);
 		hashCode.Add(DataFields);
 		return hashCode.ToHashCode();

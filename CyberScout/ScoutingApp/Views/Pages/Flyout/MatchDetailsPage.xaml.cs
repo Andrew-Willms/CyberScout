@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using Comms.Dtos;
 using Comms.Dtos.Match;
-using Comms.Serialization;
+using Comms.Serialization.MatchDto;
 using Microsoft.Maui.Controls;
 using ScoutingApp.AppManagement;
 using ScoutingApp.Views.Pages.Match;
@@ -29,7 +29,7 @@ public partial class MatchDetailsPage : ContentPage, INotifyPropertyChanged {
 		get;
 		set {
 			field = value;
-			QrCodeContent = MatchDataDtoToCsv.Serialize(value);
+			QrCodeContent = MatchDtoToCsv.Serialize(value);
 			OnPropertyChanged(nameof(SavedImportMatch));
 		}
 	} = null!;

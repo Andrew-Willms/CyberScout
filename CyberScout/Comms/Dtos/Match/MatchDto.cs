@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using Domain.Data;
+using Domain.MatchData;
 using OneOf;
+using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Results;
 using Willmsy.AsyncTryResult;
 
@@ -22,11 +22,8 @@ public class MatchDto {
 
 	public required long OriginalMatchId { get; init; }
 
-	// TODO create a DeviceId type
-	public required List<(string deviceId, long matchdId)> Parents { get; init; }
-
-	// TODO figure out if this needs escaping
-	public string ParentsAsText => string.Join(';', Parents.Select(parent => $"{parent.deviceId}, {parent.matchdId}"));
+	// TODO consider creating a DeviceId type
+	public required ReadOnlyList<(string deviceId, long matchdId)> Parents { get; init; }
 
 	public required string GameDeviceId { get; init; }
 
@@ -93,49 +90,10 @@ public class MatchDto {
 			MatchId = matchId,
 			OriginalDeviceId = originalDeviceId,
 			OriginalMatchId = originalMatchId,
-			Parents = parents,
+			Parents = parents.ToReadOnly(),
 			GameDeviceId = gameDeviceId,
 			GameId = gameId
 		};
-	}
-
-	public static ParentsFromTextResult ParentsFromText(string parentsAsText) {
-
-		List<(string deviceId, long matchId)> parents = [];
-
-		if (string.IsNullOrEmpty(parentsAsText)) {
-			return parents;
-		}
-
-		int parentStartIndex = 0;
-		int parentEndIndex = 0;
-		while (parentEndIndex < parentsAsText.Length) {
-
-			parentEndIndex = parentsAsText.IndexOf(';', parentStartIndex);
-
-			if (parentEndIndex == -1) {
-				parentEndIndex = parentsAsText.Length;
-			}
-
-			int nextCommaPosition = parentsAsText.IndexOf(',', parentStartIndex);
-
-			if (nextCommaPosition == -1) {
-				return new NoCommaInParentTextError(parentsAsText);
-			}
-
-			string parentDeviceId = parentsAsText.Substring(parentStartIndex, nextCommaPosition - parentStartIndex);
-			string parentMatchIdText = parentsAsText.Substring(nextCommaPosition + 1, parentEndIndex - (nextCommaPosition + 1));
-
-			if (!long.TryParse(parentMatchIdText, out long parentMatchId)) {
-				return new CoundNotParseMatchIndexError(parentsAsText);
-			}
-
-			parents.Add((parentDeviceId, parentMatchId));
-
-			parentStartIndex = parentEndIndex + 1;
-		}
-
-		return parents;
 	}
 
 }
@@ -222,46 +180,3 @@ public record EditedMatchHasNoParentsError : Error;
 public record MatchNotAfterParentMatchError : Error;
 
 public record ParentMatchBeforeOriginalMatchError : Error;
-
-
-
-public record ParentsFromTextResult : AsyncTryResult<List<(string deviceId, long matchId)>, ParentsFromTextError> {
-
-	public ParentsFromTextResult(List<(string deviceId, long matchId)> value) : base(value) { }
-
-	public ParentsFromTextResult(ParentsFromTextError error) : base(error) { }
-
-	public static implicit operator ParentsFromTextResult(List<(string deviceId, long matchId)> value) {
-		return new(value);
-	}
-
-	public static implicit operator ParentsFromTextResult(ParentsFromTextError error) {
-		return new(error);
-	}
-
-	public static implicit operator ParentsFromTextResult(NoCommaInParentTextError error) {
-		return new(error);
-	}
-
-	public static implicit operator ParentsFromTextResult(CoundNotParseMatchIndexError error) {
-		return new(error);
-	}
-
-}
-
-[GenerateOneOf]
-public partial class ParentsFromTextError : OneOfBase<
-	NoCommaInParentTextError,
-	CoundNotParseMatchIndexError> {
-
-	public static implicit operator Error(ParentsFromTextError error) {
-		return error.Match<Error>(
-			error1 => error1,
-			error2 => error2);
-	}
-
-}
-
-public record NoCommaInParentTextError(string ParentsText) : Error;
-
-public record CoundNotParseMatchIndexError(string ParentsText) : Error;

@@ -1,19 +1,19 @@
 ﻿using Comms.Dtos.Match;
-using Comms.Serialization;
-using MatchDataDeserializationResult = Comms.Serialization.MatchDataDeserializationResult;
+using Comms.Serialization.Match;
+using MatchDataDeserializationResult = Comms.Serialization.Match.MatchDataDeserializationResult;
 
 namespace Domain.Tests.Serialization;
 
 
 
-public class MatchDataToCsvTests {
+public class MatchToCsvTests {
 
 	[Theory]
 	[ClassData(typeof(SampleData))]
-	public void TestSerialization(Data.MatchData matchData) {
+	public void TestSerialization(MatchData.MatchData matchData) {
 
-		string serialized = MatchDataToCsv.Serialize(matchData);
-		MatchDataDeserializationResult deserializationResult = MatchDataToCsv.Deserialize(serialized, SampleData.GameSpec);
+		string serialized = MatchToCsv.Serialize(matchData);
+		MatchDataDeserializationResult deserializationResult = MatchToCsv.Deserialize(serialized, SampleData.GameSpec);
 
 		if (deserializationResult.IsFailure) {
 			Assert.Fail();
@@ -25,7 +25,7 @@ public class MatchDataToCsvTests {
 
 	[Theory]
 	[ClassData(typeof(SampleData))]
-	public void TestDtoSerialization(Data.MatchData matchData) {
+	public void TestDtoSerialization(MatchData.MatchData matchData) {
 
 		CreateMatchDataDtoResult result = MatchDto.Create(
 			matchData: matchData,
@@ -42,15 +42,15 @@ public class MatchDataToCsvTests {
 			Assert.Fail();
 		}
 
-		string serialized = MatchDataDtoToCsv.Serialize(result.Value);
-		MatchDto? deserialized = MatchDataDtoToCsv.Deserialize(serialized, SampleData.GameSpec);
+		string serialized = MatchDtoToCsv.Serialize(result.Value);
+		MatchDto? deserialized = MatchDtoToCsv.Deserialize(serialized, SampleData.GameSpec);
 
 		Assert.True(result.Equals(deserialized));
 	}
 
 	[Theory]
 	[ClassData(typeof(SampleData))]
-	public void TestDtoSerialization_2(Data.MatchData matchData) {
+	public void TestDtoSerialization_2(MatchData.MatchData matchData) {
 
 
 		CreateMatchDataDtoResult result = MatchDto.Create(
@@ -68,8 +68,8 @@ public class MatchDataToCsvTests {
 			Assert.Fail();
 		}
 
-		string serialized = MatchDataDtoToCsv.Serialize(result.Value);
-		MatchDto? deserialized = MatchDataDtoToCsv.Deserialize(serialized, SampleData.GameSpec);
+		string serialized = MatchDtoToCsv.Serialize(result.Value);
+		MatchDto? deserialized = MatchDtoToCsv.Deserialize(serialized, SampleData.GameSpec);
 
 		Assert.True(result.Equals(deserialized));
 	}

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using Domain.Data;
 using Domain.GameSpecification;
 using Domain.MatchData;
 using UtilitiesLibrary.Collections;
@@ -11,7 +10,7 @@ using UtilitiesLibrary.MiscExtensions;
 using UtilitiesLibrary.Optional;
 using UtilitiesLibrary.Results;
 
-namespace Comms.Serialization;
+namespace Comms.Serialization.Match;
 
 
 
@@ -75,7 +74,6 @@ public record DataFieldError {
 
 
 
-
 public static class MatchDataToCsv {
 
 	private const int ScoutNameColumnIndex = 0;
@@ -89,24 +87,36 @@ public static class MatchDataToCsv {
 	private const int EndTimeColumnIndex = 8;
 	private const int CountOfBuiltInFields = 9;
 
+	private static readonly string FixedCsvHeader =
+		nameof(MatchData.ScoutName) + ',' +
+		nameof(MatchData.EventCode) + ',' +
+		nameof(MatchData.Match.MatchGroupName) + ',' +
+		nameof(MatchData.Match.MatchName) + ',' +
+		nameof(MatchData.Match.ReplayNumber) + ',' +
+		nameof(MatchData.AllianceIndex) + ',' +
+		nameof(MatchData.TeamNumber) + ',' +
+		nameof(MatchData.TimeStamp) + ',';
+
 	public static string GetCsvHeaders(GameSpec gameSpecification) {
 
-		StringBuilder stringBuilder = new("ScoutName,EventCode,MatchNumber,MatchType,ReplayNumber,AllianceIndex,TeamNumber,StartTime,EndTime,");
-
+		// The default buffer size is 16 and that seems reasonable for the length of a DataField name.
+		int stringBuilderCapacity = FixedCsvHeader.Length + gameSpecification.DataFields.Count * 16;
+		StringBuilder stringBuilder = new(FixedCsvHeader, stringBuilderCapacity);
 		stringBuilder.AppendJoin(",", gameSpecification.DataFields.Select(x => x.Name.ToCsvFriendly()));
-
 		return stringBuilder.ToString();
 	}
 
 	public static string Serialize(MatchData matchData) {
 
-		StringBuilder stringBuilder = new(matchData.ScoutName.ToCsvFriendly());
+		// Estimate the device and match IDs will be about 50 characters and each field will take about 5.
+		StringBuilder stringBuilder = new(50 + matchData.GameSpecification.DataFields.Count * 5);
+		stringBuilder.Append(matchData.ScoutName.ToCsvFriendly());
 		stringBuilder.Append(',');
 		stringBuilder.Append(matchData.EventCode);
 		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.Match.MatchNumber);
+		stringBuilder.Append(matchData.Match.MatchGroupName);
 		stringBuilder.Append(',');
-		stringBuilder.Append((int)matchData.Match.Type);
+		stringBuilder.Append(matchData.Match.MatchName);
 		stringBuilder.Append(',');
 		stringBuilder.Append(matchData.Match.ReplayNumber);
 		stringBuilder.Append(',');
@@ -114,9 +124,7 @@ public static class MatchDataToCsv {
 		stringBuilder.Append(',');
 		stringBuilder.Append(matchData.TeamNumber);
 		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.StartTime.ToString("o").ToCsvFriendly());
-		stringBuilder.Append(',');
-		stringBuilder.Append(matchData.EndTime.ToString("o").ToCsvFriendly());
+		stringBuilder.Append(matchData.TimeStamp.ToString("o").ToCsvFriendly());
 
 		for (int i = 0; i < matchData.DataFields.Count; i++) {
 

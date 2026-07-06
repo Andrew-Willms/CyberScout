@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using Comms.Dtos;
 using Comms.Dtos.Match;
-using Comms.Serialization;
+using Comms.Serialization.MatchDto;
 using Database;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
@@ -74,7 +74,7 @@ public partial class QrCodeScanner : ContentPage {
 			return;
 		}
 
-		MatchDto? matchDataDto = MatchDataDtoToCsv.Deserialize(qrCodeString, AppManager.GameSpecification);
+		MatchDto? matchDataDto = MatchDtoToCsv.Deserialize(qrCodeString, AppManager.GameSpecification);
 
 		if (matchDataDto is null) {
 			ErrorPresenter.DisplayError("Invalid QR Code", "The QR code data could not be converted into a match.");
@@ -156,10 +156,10 @@ public partial class QrCodeScanner : ContentPage {
 
 			List<MatchDto> matchData = matchDataResult.AsT0;
 
-			StringBuilder stringBuilder = new(MatchDataToCsv.GetCsvHeaders(AppManager.GameSpecification));
+			StringBuilder stringBuilder = new(MatchToCsv.GetCsvHeaders(AppManager.GameSpecification));
 			foreach (MatchDto matchDataDto in matchData) {
 				stringBuilder.Append('\n');
-				stringBuilder.Append(MatchDataToCsv.Serialize(matchDataDto.Data));
+				stringBuilder.Append(MatchToCsv.Serialize(matchDataDto.Data));
 			}
 
 			string saveDirectory =

@@ -1,4 +1,4 @@
-﻿using Domain.Data;
+﻿using Domain.MatchData;
 
 namespace Comms.Dtos.Match;
 

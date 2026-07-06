@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Comms.Dtos;
 using Comms.Dtos.Match;
-using Comms.Serialization;
+using Comms.Serialization.MatchDto;
 using Microsoft.Maui;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;

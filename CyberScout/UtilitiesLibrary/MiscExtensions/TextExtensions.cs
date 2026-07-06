@@ -51,6 +51,8 @@ public static class TextExtensions {
 
 	public static string ToCsvFriendly(this string text) {
 
+		// todo: surely I need something with commas here
+
 		text = text.Replace("\"", "\"\"");
 		text = "\"" + text + "\"";
 		return text;

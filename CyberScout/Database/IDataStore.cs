@@ -48,9 +48,9 @@ public interface IDataStore {
 
 	public Task<Result<MatchDto>> AddEditedMatchData(EditedMatchDto editedMatchDto);
 
-	public Task<Result> ImportMatchData(MatchDto importMatchDto);
+	public Task<Result> ImportMatchData(MatchDto matchDto);
 
-	public Task<Result> DeleteMatchData(MatchDto matchToDelete);
+	public Task<Result> DeleteMatchData(MatchDto matchDto);
 
 	public Task<Result> DeleteMatchDataFromEvent(string eventCode);
 

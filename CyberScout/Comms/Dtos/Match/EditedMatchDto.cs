@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
-using Domain.Data;
+using Domain.MatchData;
+using UtilitiesLibrary.Collections;
 
 namespace Comms.Dtos.Match;
 
@@ -15,7 +16,7 @@ public class EditedMatchDto {
 
 	public required long OriginalMatchId { get; init; }
 
-	public required List<(string deviceId, long matchId)> Parents { get; init; }
+	public required ReadOnlyList<(string deviceId, long matchId)> Parents { get; init; }
 
 	public required string GameDeviceId { get; init; }
 
@@ -54,7 +55,7 @@ public class EditedMatchDto {
 			DeviceId = deviceId,
 			OriginalDeviceId = originalDeviceId,
 			OriginalMatchId = originalMatchId,
-			Parents = parents,
+			Parents = parents.ToReadOnly(),
 			GameDeviceId = gameDeviceId,
 			GameId = gameId
 		};
