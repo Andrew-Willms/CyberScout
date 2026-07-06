@@ -2,21 +2,24 @@
 
 
 
-public enum MatchType {
-	Practice = 0,
-	Qualification = 1,
-	Elimination = 2,
-	//QuarterFinal, // Todo add support for old style playoffs and custom tournament formats
-	//SemiFinal,
-	Final = 3
-}
-
+/// <summary>
+/// Uniquely identifies a match of an event.
+/// </summary>
 public record Match {
-
-	public required uint MatchNumber { get; init; }
-
-	public required uint ReplayNumber { get; init; }
 	
-	public required MatchType Type { get; init; }
+	/// <summary>
+	/// The name of the <see cref="MatchGroup"/> the match is part of. For example, "Qualification".
+	/// </summary>
+	public required string MatchGroup { get; init; }
+
+	/// <summary>
+	/// The name of the match within its <see cref="MatchGroup"/>. For example, "Match 1".
+	/// </summary>
+	public required string MatchName { get; init; }
+
+	/// <summary>
+	/// The replay count of the match. For example, 0 for the original play of a match, 1 for the first time a match is replayed.
+	/// </summary>
+	public required uint ReplayNumber { get; init; }
 
 }

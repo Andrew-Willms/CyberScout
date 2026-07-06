@@ -9,6 +9,9 @@ namespace Domain.DataCollectors;
 
 
 
+// TODo move to ScoutingApp.Domain
+// I will have to move the creation logic (DataFieldSpec.ToDataField) to live with this in ScoutingApp.Domain.
+// Currently that creation logic lives with the DataFieldSpecs which seems wrong.
 public abstract class DataField : INotifyPropertyChanged {
 
 	public DataFieldSpec Specification { get; }

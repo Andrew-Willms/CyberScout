@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Domain.EventSchedule;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Results;
 
@@ -17,8 +18,7 @@ public class GameSpec : IEquatable<GameSpec> {
 	public required Version Version { get; init; } = new(1, 0, 0);
 	//public DateTime VersionReleaseDate { get; } = DateTime.Now;
 
-	public required uint RobotsPerAlliance { get; init; }
-	public required uint AlliancesPerMatch { get; init; }
+	public required MatchFormat MatchFormat { get; init; }
 
 	public required ReadOnlyList<AllianceColor> Alliances { get; init; }
 

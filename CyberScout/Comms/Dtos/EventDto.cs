@@ -1,6 +1,5 @@
 ﻿using System;
 using Domain.EventSchedule;
-using Domain.GameSpecification;
 
 namespace Comms.Dtos;
 
