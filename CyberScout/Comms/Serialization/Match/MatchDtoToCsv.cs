@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Text;
 using Comms.Dtos.Match;
 using Domain.GameSpecification;
@@ -58,7 +56,7 @@ public static class MatchDtoToCsv {
 		return stringBuilder.ToString();
 	}
 
-	public static MatchDto? Deserialize(string matchData, GameSpec gameSpecification) {
+	public static Result<MatchDto> Deserialize(string matchData, GameSpec gameSpecification) {
 
 		List<string> columns = matchData.SplitTextToCsvColumns();
 
@@ -76,6 +74,8 @@ public static class MatchDtoToCsv {
 		string parentsText = columns[4];
 		string gameDeviceId = columns[5];
 		success &= long.TryParse(columns[6], out long gameId);
+
+
 		string eventCode = columns[7];
 		string scoutName = columns[8];
 		string matchGroupName = columns[9];
@@ -150,7 +150,6 @@ public static class MatchDtoToCsv {
 		MatchData? matchDataObject = MatchData.FromRaw(
 			gameSpecification: gameSpecification,
 			eventCode: eventCode,
-			eventSchedule: null,
 			scoutName: scoutName,
 			match: new() {
 				MatchGroupName = matchGroupName,

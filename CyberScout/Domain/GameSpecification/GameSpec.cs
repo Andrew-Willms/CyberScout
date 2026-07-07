@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using Domain.EventSchedule;
 using UtilitiesLibrary.Collections;
@@ -9,18 +8,16 @@ namespace Domain.GameSpecification;
 
 
 
-public class GameSpec : IEquatable<GameSpec> {
+public record GameSpec : IEquatable<GameSpec> {
 
 	public required string Name { get; init; }
-	public string Description { get; init; } = "";
+	public string Description { get; init; } = string.Empty;
 	public required int Year { get; init; }
 
 	public required Version Version { get; init; } = new(1, 0, 0);
 	//public DateTime VersionReleaseDate { get; } = DateTime.Now;
 
 	public required MatchFormat MatchFormat { get; init; }
-
-	public required ReadOnlyList<AllianceColor> Alliances { get; init; }
 
 	public required ReadOnlyList<DataFieldSpec> DataFields { get; init; }
 
@@ -35,22 +32,15 @@ public class GameSpec : IEquatable<GameSpec> {
 
 	public static IOldResult<GameSpec> Create(
 		string name,
-		int year,
 		string description,
+		int year,
 		Version version,
-		uint robotsPerAlliance,
-		uint alliancesPerMatch,
-		ReadOnlyList<AllianceColor> alliances,
+		MatchFormat matchFormat,
 		ReadOnlyList<DataFieldSpec> dataFields,
 		ReadOnlyList<InputSpec> setupTabInputs,
 		ReadOnlyList<InputSpec> autoTabInputs,
 		ReadOnlyList<InputSpec> teleTabInputs,
 		ReadOnlyList<InputSpec> endgameTabInputs) {
-
-		List<string> duplicateNames = alliances.Select(x => x.Name).Duplicates();
-		foreach (string duplicate in duplicateNames) {
-			return new IOldResult<GameSpec>.OldError($"There are multiple alliances with the name '{duplicate}'.");
-		}
 
 		foreach (InputSpec input in setupTabInputs) {
 
@@ -94,9 +84,7 @@ public class GameSpec : IEquatable<GameSpec> {
 				Description = description,
 				Year = year,
 				Version = version,
-				RobotsPerAlliance = robotsPerAlliance,
-				AlliancesPerMatch = alliancesPerMatch,
-				Alliances = alliances,
+				MatchFormat = matchFormat,
 				DataFields = dataFields.ToReadOnly(),
 				SetupTabInputs = setupTabInputs,
 				AutoTabInputs = autoTabInputs,
@@ -109,7 +97,7 @@ public class GameSpec : IEquatable<GameSpec> {
 
 
 	// TODO consider rapping collections with value comparison wrappers and make this a record
-	public bool Equals(GameSpec? other) {
+	public virtual bool Equals(GameSpec? other) {
 
 		if (other is null) {
 			return false;
@@ -124,31 +112,12 @@ public class GameSpec : IEquatable<GameSpec> {
 		    Description == other.Description &&
 		    Year == other.Year &&
 		    Version.Equals(other.Version) &&
-		    RobotsPerAlliance == other.RobotsPerAlliance &&
-		    AlliancesPerMatch == other.AlliancesPerMatch &&
-		    Alliances.SequenceEqual(other.Alliances) &&
+		    MatchFormat == other.MatchFormat &&
 		    DataFields.SequenceEqual(other.DataFields) &&
 		    SetupTabInputs.SequenceEqual(other.SetupTabInputs) &&
 		    AutoTabInputs.SequenceEqual(other.AutoTabInputs) &&
 		    TeleTabInputs.SequenceEqual(other.TeleTabInputs) &&
 		    EndgameTabInputs.SequenceEqual(other.EndgameTabInputs);
-	}
-
-	public override bool Equals(object? obj) {
-
-		if (obj is null) {
-			return false;
-		}
-
-		if (ReferenceEquals(this, obj)) {
-			return true;
-		}
-
-		if (obj.GetType() != GetType()) {
-			return false;
-		}
-
-		return Equals((GameSpec) obj);
 	}
 
 	public override int GetHashCode() {
@@ -157,9 +126,7 @@ public class GameSpec : IEquatable<GameSpec> {
 		hashCode.Add(Description);
 		hashCode.Add(Year);
 		hashCode.Add(Version);
-		hashCode.Add(RobotsPerAlliance);
-		hashCode.Add(AlliancesPerMatch);
-		Alliances.Foreach(alliance => hashCode.Add(alliance));
+		hashCode.Add(MatchFormat);
 		DataFields.Foreach(dataField => hashCode.Add(dataField));
 		SetupTabInputs.Foreach(inputSpec => hashCode.Add(inputSpec));
 		AutoTabInputs.Foreach(inputSpec => hashCode.Add(inputSpec));

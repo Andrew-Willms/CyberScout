@@ -51,14 +51,15 @@ public static class TextExtensions {
 
 	public static string ToCsvFriendly(this string text) {
 
-		// todo: surely I need something with commas here
-
 		text = text.Replace("\"", "\"\"");
 		text = "\"" + text + "\"";
 		return text;
 	}
 
 	public static List<string> SplitTextToCsvColumns(this string text) {
+
+		// TODO consider rewriting this so it doesn't allocate
+		// I probably want to return a list of ReadOnlySpan<char>
 
 		if (text.IsEmpty()) {
 			return [];

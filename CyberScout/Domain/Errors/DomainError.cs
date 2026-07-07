@@ -1,6 +1,4 @@
-﻿using System;
-using Domain.GameSpecification;
-using Domain.MatchData;
+﻿using Domain.GameSpecification;
 using UtilitiesLibrary.Collections;
 
 namespace Domain.Errors;
@@ -17,45 +15,12 @@ public class MatchDataCollectorInvalid : DomainError {
 
 }
 
-public class EventScheduleButNoEventCode : DomainError;
-
-public class EventCodeAndScheduleMismatch : DomainError {
-
-	public required string EventCode { get; init; }
-
-	public required string ScheduleEventCode { get; init; }
-
-}
-
-public class BadMatchNumberError : DomainError {
-
-	public required uint MatchNumber { get; init; }
-
-	public required uint MaxMatchNumber { get; init; }
-
-	public required MatchType MatchType { get; init; }
-
-}
-
-public class TeamNotInMatch : DomainError {
-
-	public required uint Team { get; init; }
-
-}
-
 public class BadAllianceIndex : DomainError {
 
 	public required uint AllianceIndex { get; init; }
 
-	public required uint MaxAllianceIndex { get; init; }
+	public required int MaxAllianceIndex { get; init; }
 
-}
-
-public class StartAfterEnd : DomainError {
-
-	public required DateTime StartTime { get; init; }
-
-	public required DateTime EndTime { get; init; }
 }
 
 public class DataFieldMismatch : DomainError {

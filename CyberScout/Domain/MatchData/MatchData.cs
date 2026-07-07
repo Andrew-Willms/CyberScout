@@ -12,7 +12,7 @@ namespace Domain.MatchData;
 
 
 
-public class MatchData : IEquatable<MatchData> {
+public record MatchData : IEquatable<MatchData> {
 
 	public GameSpec GameSpecification { get; private init; }
 
@@ -35,12 +35,11 @@ public class MatchData : IEquatable<MatchData> {
 
 	private MatchData(
 		GameSpec gameSpecification,
-		string? eventCode,
-		EventSchedule.EventSchedule? eventSchedule,
 		string scoutName,
+		string eventCode,
 		Match match,
-		uint teamNumber,
 		uint allianceIndex,
+		uint teamNumber,
 		DateTime timeStamp,
 		ReadOnlyList<object> dataFieldValues) {
 
@@ -54,26 +53,24 @@ public class MatchData : IEquatable<MatchData> {
 		DataFields = dataFieldValues;
 	}
 
+	// TODO move this to where the collectors live
 	public static MatchData? FromDataCollector(
 		MatchDataCollector collector,
 		string eventCode,
-		EventSchedule.EventSchedule? eventSchedule,
 		string scoutName) {
 
 		List<DomainError> errors = [];
 
-		DateTime endTime = DateTime.Now;
 		Match match = new() {
-			MatchNumber = collector.MatchNumber.Value,
-			ReplayNumber = collector.ReplayNumber.Value,
-			Type = collector.MatchType.Value
+			MatchGroupName = null, // TODO fix
+			MatchName = null,
+			ReplayNumber = 0
 		};
 
 		if (!collector.IsValid) {
 			errors.Add(new MatchDataCollectorInvalid { CollectorErrors = collector.Errors.ToReadOnly() });
 		}
 
-		ValidateMatch(errors.Add, match, collector.TeamNumber.Value, eventCode, eventSchedule);
 		ValidateAllianceIndex(errors.Add, collector.GameSpecification, collector.Alliance.Value);
 		ValidateDataFields(errors.Add, collector.GameSpecification, collector.DataFields, out ReadOnlyList<object> dataFieldResults);
 
@@ -84,7 +81,6 @@ public class MatchData : IEquatable<MatchData> {
 		return new(
 			collector.GameSpecification,
 			eventCode,
-			eventSchedule,
 			scoutName,
 			match,
 			collector.TeamNumber.Value,
@@ -96,8 +92,7 @@ public class MatchData : IEquatable<MatchData> {
 
 	public static MatchData? FromRaw(
 		GameSpec gameSpecification,
-		string? eventCode,
-		EventSchedule.EventSchedule? eventSchedule,
+		string eventCode,
 		string scoutName,
 		Match match,
 		uint teamNumber,
@@ -106,10 +101,8 @@ public class MatchData : IEquatable<MatchData> {
 		ReadOnlyList<object> dataFieldValues) {
 
 		List<DomainError> errors = [];
-
-		ValidateMatch(errors.Add, match, teamNumber, eventCode, eventSchedule);
+		
 		ValidateAllianceIndex(errors.Add, gameSpecification, allianceIndex);
-		ValidateTimes(errors.Add, startTime, endTime);
 		ValidateDataFieldValues(errors.Add, gameSpecification, dataFieldValues, out ReadOnlyList<object> dataFieldResults);
 
 		if (errors.Any()) {
@@ -119,94 +112,26 @@ public class MatchData : IEquatable<MatchData> {
 		return new(
 			gameSpecification,
 			eventCode,
-			eventSchedule,
 			scoutName,
 			match,
 			teamNumber,
 			allianceIndex,
 			startTime,
-			endTime,
 			dataFieldResults
 		);
 	}
 
 
 
-	private static void ValidateMatch(
-		Action<DomainError> errorSink,
-		Match match,
-		uint teamNumber,
-		string? eventCode,
-		EventSchedule.EventSchedule? eventSchedule) {
-
-		if (eventSchedule is null) {
-			return;
-		}
-
-		if (eventCode is null) {
-			errorSink(new EventScheduleButNoEventCode());
-
-		} else if (eventCode != eventSchedule.EventCode) {
-			errorSink(new EventCodeAndScheduleMismatch { EventCode = eventCode, ScheduleEventCode = eventSchedule.EventCode });
-		}
-
-		// todo this will need to be updated to support other tournament formats
-		switch (match.Type) {
-
-			case MatchType.Practice:
-				break;
-
-			case MatchType.Qualification:
-				uint matchCount = (uint)eventSchedule.Matches.Count;
-				if (match.MatchNumber > matchCount) {
-					errorSink(new BadMatchNumberError {
-						MatchNumber = match.MatchNumber,
-						MaxMatchNumber = matchCount,
-						MatchType = MatchType.Qualification
-					});
-				}
-				break;
-
-			case MatchType.Elimination:
-				if (match.MatchNumber > 13) {
-					errorSink(new BadMatchNumberError {
-						MatchNumber = match.MatchNumber,
-						MaxMatchNumber = 13,
-						MatchType = MatchType.Elimination
-					});
-				}
-				break;
-
-			case MatchType.Final:
-				if (match.MatchNumber > 3) {
-					errorSink(new BadMatchNumberError {
-						MatchNumber = match.MatchNumber,
-						MaxMatchNumber = 3,
-						MatchType = MatchType.Final
-					});
-				}
-				break;
-
-			default:
-				throw new UnreachableException();
-		}
-
-		if (!eventSchedule.Teams.Contains(teamNumber)) {
-			errorSink(new TeamNotInMatch { Team = teamNumber });
-		}
-
-		// todo validate start time and end time against event?
-	}
-
 	private static void ValidateAllianceIndex(
 		Action<DomainError> errorSink,
 		GameSpec gameSpecification,
 		uint allianceIndex) {
 
-		if (gameSpecification.Alliances.Count <= allianceIndex) {
+		if (gameSpecification.MatchFormat.Alliances.Count <= allianceIndex) {
 			errorSink(new BadAllianceIndex {
 				AllianceIndex = allianceIndex,
-				MaxAllianceIndex = gameSpecification.AlliancesPerMatch - 1
+				MaxAllianceIndex = gameSpecification.MatchFormat.Alliances.Count - 1
 			});
 		}
 	}
@@ -273,7 +198,8 @@ public class MatchData : IEquatable<MatchData> {
 
 
 
-	public bool Equals(MatchData? other) {
+	// TODO create a generator to generate equality comparisons that use a sequence comparison on enumerables.
+	public virtual bool Equals(MatchData? other) {
 
 		if (other is null) {
 			return false;
@@ -325,30 +251,12 @@ public class MatchData : IEquatable<MatchData> {
 
 		return
 			GameSpecification.Equals(other.GameSpecification) &&
-			EventCode == other.EventCode &&
 			ScoutName == other.ScoutName &&
+			EventCode == other.EventCode &&
 			Match.Equals(other.Match) &&
-			TeamNumber == other.TeamNumber &&
 			AllianceIndex == other.AllianceIndex &&
-			TimeStamp.Equals(other.TimeStamp) &&
-			EndTime.Equals(other.EndTime);
-	}
-
-	public override bool Equals(object? @object) {
-
-		if (@object is null) {
-			return false;
-		}
-
-		if (ReferenceEquals(this, @object)) {
-			return true;
-		}
-
-		if (@object.GetType() != GetType()) {
-			return false;
-		}
-
-		return Equals((MatchData) @object);
+			TeamNumber == other.TeamNumber &&
+			TimeStamp.Equals(other.TimeStamp);
 	}
 
 	public override int GetHashCode() {
@@ -360,7 +268,6 @@ public class MatchData : IEquatable<MatchData> {
 		hashCode.Add(TeamNumber);
 		hashCode.Add(AllianceIndex);
 		hashCode.Add(TimeStamp);
-		hashCode.Add(EndTime);
 		hashCode.Add(DataFields);
 		return hashCode.ToHashCode();
 	}
