@@ -24,7 +24,8 @@ public static class MatchDataToCsv {
 	private const int AllianceColumnIndex = 5;
 	private const int TeamNumberColumnIndex = 6;
 	private const int TimeStampColumnIndex = 7;
-	private const int CountOfBuiltInFields = 8;
+
+	public const int FixedFieldCount = 8;
 
 	private static readonly string FixedCsvHeader =
 		nameof(MatchData.ScoutName) + ',' +
@@ -252,65 +253,5 @@ public static class MatchDataToCsv {
 				throw new NotImplementedException(dataField.GetType().Name);
 		}
 	}
-
-}
-
-
-
-public record MatchDataDeserializationResult : Result<MatchData, MatchDataDeserializationError> {
-
-	public MatchDataDeserializationResult(MatchData value) : base(value) { }
-
-	public MatchDataDeserializationResult(MatchDataDeserializationError error) : base(error) { }
-
-	public static implicit operator MatchDataDeserializationResult(MatchData value) {
-		return new(value);
-	}
-
-	public static implicit operator MatchDataDeserializationResult(MatchDataDeserializationError error) {
-		return new(error);
-	}
-
-}
-
-// TODO: Consider making this a OneOf<> to enforce exhaustive matching on switch
-// The SerializedMatchData and GameSpecification properties could be moved to an interface?
-public abstract record MatchDataDeserializationError : Error {
-
-	public required string SerializedMatchData { get; init; }
-
-	public required GameSpec GameSpecification { get; init; }
-
-}
-
-public record WrongNumberOfCsvColumnsError : MatchDataDeserializationError {
-
-	public required uint ExpectedColumnCount { get; init; }
-
-	public required ReadOnlyList<string> Columns { get; init; }
-
-}
-
-public record CouldNotParseValuesError : MatchDataDeserializationError {
-
-	public required ReadOnlyList<CoreValueError> CoreValueErrors { get; init; }
-
-	public required ReadOnlyList<DataFieldError> DataFieldErrors { get; init; }
-}
-
-public record CoreValueError {
-
-	public required int ColumnIndex { get; init; }
-
-	public required Type ExpectedType { get; init; }
-
-	public required string Text { get; init; }
-}
-
-public record DataFieldError {
-
-	public required DataFieldSpec DataField { get; init; }
-
-	public required string Text { get; init; }
 
 }

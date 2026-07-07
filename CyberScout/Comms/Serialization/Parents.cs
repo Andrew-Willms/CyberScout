@@ -7,7 +7,7 @@ namespace Comms.Serialization;
 
 
 
-public class Parents {
+public static class Parents {
 
 	public static string ToText(ReadOnlyList<(string deviceId, long matchId)> parents) {
 		return string.Join(';', parents.Select(parent => $"{parent.deviceId}:{parent.matchId}"));

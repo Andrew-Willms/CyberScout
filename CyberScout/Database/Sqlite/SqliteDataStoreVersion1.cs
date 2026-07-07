@@ -132,7 +132,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			return result;
 		}
 
-		result = await CreateEventMetaDataTable(connection);
+		result = await CreateEventDataTable(connection);
 		if (result.IsFailure) {
 			return result;
 		}
@@ -332,10 +332,6 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.GameData)}" (
 			     "{Tables.GameData.DeviceId}" TEXT NOT NULL,
 			     "{Tables.GameData.GameId}" INTEGER NOT NULL,
-			     "{Tables.GameData.TimePublished}" INTEGER NOT NULL,
-			     "{Tables.GameData.MajorVersion}" INTEGER NOT NULL,
-			     "{Tables.GameData.MinorVersion}" INTEGER NOT NULL,
-			     "{Tables.GameData.PatchVersion}" INTEGER NOT NULL,
 			     "{Tables.GameData.Data}" TEXT NOT NULL,
 			     
 			     PRIMARY KEY ("{Tables.GameData.DeviceId}", "{Tables.GameData.GameId}"),
@@ -445,14 +441,13 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		return Result.Success;
 	}
 
-	private static async Task<Result> CreateEventMetaDataTable(SqliteConnection connection) {
+	private static async Task<Result> CreateEventDataTable(SqliteConnection connection) {
 
 		SqliteCommand command = new(
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EventData)}" (
 			     "{Tables.EventData.DeviceId}" TEXT NOT NULL,
-			     "{Tables.EventData.EventId}" INTEGER NOT NULL,
-			     "{Tables.EventData.TimePublished}" INTEGER NOT NULL,
+			     "{Tables.EventData.EventId}" INTEGER NOT NULL
 			     
 			     PRIMARY KEY ("{Tables.EventData.DeviceId}", "{Tables.EventData.EventId}"),
 			     
@@ -938,7 +933,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			}
 			string serializedData = dataResult.Value;
 
-			MatchDataDeserializationResult deserializationResult = MatchDataToCsv.Deserialize(serializedData, gameDto.Specification);
+			Result<MatchData> deserializationResult = MatchDataToCsv.Deserialize(serializedData, gameDto.Specification);
 			if (deserializationResult.IsFailure) {
 				return new AdHocError("Error deserializing match data.", deserializationResult.Error);
 			}

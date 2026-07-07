@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text;
 using Comms.Dtos.Match;
 using Domain.GameSpecification;
 using Domain.MatchData;
-using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.MiscExtensions;
-using UtilitiesLibrary.Optional;
 using UtilitiesLibrary.Results;
 
 namespace Comms.Serialization.Match;
@@ -14,6 +11,15 @@ namespace Comms.Serialization.Match;
 
 
 public static class MatchDtoToCsv {
+
+	private const int DeviceIdColumnIndex = 0;
+	private const int MatchIdColumnIndex = 1;
+	private const int OriginalDeviceIdColumnIndex = 2;
+	private const int OriginalMatchIdColumnIndex = 3;
+	private const int ParentsColumnIndex = 4;
+	private const int GameDeviceIdColumnIndex = 5;
+	private const int GameIdColumnIndex = 6;
+	private const int MatchDataStartColumnId = 7;
 
 	private static readonly string FixedCsvHeader =
 		nameof(MatchDto.DeviceId) + ',' +
@@ -24,7 +30,7 @@ public static class MatchDtoToCsv {
 		nameof(MatchDto.GameDeviceId) + ',' +
 		nameof(MatchDto.GameId) + ',';
 
-	private const int FixedFieldCount = 15;
+	private const int FixedFieldCount = MatchDataStartColumnId + MatchDataToCsv.FixedFieldCount;
 
 	public static string GetCsvHeaders(GameSpec gameSpecification) {
 
@@ -56,117 +62,49 @@ public static class MatchDtoToCsv {
 		return stringBuilder.ToString();
 	}
 
-	public static Result<MatchDto> Deserialize(string matchData, GameSpec gameSpecification) {
+	public static Result<MatchDto> Deserialize(string text, GameSpec gameSpecification) {
 
-		List<string> columns = matchData.SplitTextToCsvColumns();
+		List<string> columns = text.SplitTextToCsvColumns();
 
 		if (columns.Count != FixedFieldCount + gameSpecification.DataFields.Count) {
-			return null;
+			return new AdHocError("Wrong number of columns", ("data", text));
 		}
 
 		// todo: Create a DeviceId class with a TryParse method like this and create local variables for even the string types.
 		// Not all strings are valid DeviceIds or text for the relevant field so this additional validation may be useful.
 
-		string deviceId = columns[0];
-		bool success = long.TryParse(columns[1], out long matchId);
-		string originalDeviceId = columns[2];
-		success &= long.TryParse(columns[3], out long originalMatchId);
-		string parentsText = columns[4];
-		string gameDeviceId = columns[5];
-		success &= long.TryParse(columns[6], out long gameId);
+		string deviceId = columns[DeviceIdColumnIndex];
 
-
-		string eventCode = columns[7];
-		string scoutName = columns[8];
-		string matchGroupName = columns[9];
-		string matchName = columns[10];
-		success &= uint.TryParse(columns[11], out uint replayNumber);
-		success &= uint.TryParse(columns[12], out uint allianceIndex);
-		success &= uint.TryParse(columns[13], out uint teamNumber);
-		success &= DateTime.TryParse(columns[14], out DateTime startTime);
-
-		if (!success) {
-			return null;
+		if (!long.TryParse(columns[MatchIdColumnIndex], out long matchId)) {
+			return new AdHocError("Could not parse matchId", ("text", columns[MatchIdColumnIndex]));
 		}
 
-		Result<List<(string deviceId, long matchId)>> parentsResult = Parents.FromText(parentsText);
+		string originalDeviceId = columns[OriginalDeviceIdColumnIndex];
+
+		if (!long.TryParse(columns[OriginalMatchIdColumnIndex], out long originalMatchId)) {
+			return new AdHocError("Could not parse originalMatchId", ("text", columns[OriginalMatchIdColumnIndex]));
+		}
+
+		Result<List<(string deviceId, long matchId)>> parentsResult = Parents.FromText(columns[ParentsColumnIndex]);
 		if (parentsResult.IsFailure) {
-			return null;
+			return new AdHocError("Error parsing parents text", ("parents text", columns[ParentsColumnIndex]));
 		}
 		List<(string deviceId, long matchId)> parents = parentsResult.Value;
 
-		List<object> dataFieldValues = [];
-		for (int i = 0; i < gameSpecification.DataFields.Count; i++) {
+		string gameDeviceId = columns[GameDeviceIdColumnIndex];
 
-			string value = columns[i + 13];
-
-			switch (gameSpecification.DataFields[i]) {
-
-				case BooleanDataFieldSpec:
-					switch (value) {
-						case "1":
-							dataFieldValues.Add(true);
-							continue;
-						case "0":
-							dataFieldValues.Add(false);
-							continue;
-						default:
-							return null;
-					}
-
-				case TextDataFieldSpec:
-					dataFieldValues.Add(value);
-					break;
-
-				// TODO: I should probably parse the value and make sure it's within the bounds defined by the DataField
-				case IntegerDataFieldSpec: {
-					if (!int.TryParse(value, out int result)) {
-						return null;
-					}
-					dataFieldValues.Add(result);
-					break;
-				}
-				case SelectionDataFieldSpec selectionSpec: {
-
-					if (value == string.Empty) {
-						dataFieldValues.Add(Optional.NoValue);
-						break;
-					}
-
-					if (!int.TryParse(value, out int result)) {
-						return null;
-					}
-
-					if (result < 0 || result >= selectionSpec.Options.Count) {
-						return null;
-					}
-
-					dataFieldValues.Add(selectionSpec.Options[result].Optionalize());
-					break;
-				}
-			}
+		if (!long.TryParse(columns[GameIdColumnIndex], out long gameId)) {
+			return new AdHocError("Could not parse matchId", ("text", columns[GameIdColumnIndex]));
 		}
 
-		MatchData? matchDataObject = MatchData.FromRaw(
-			gameSpecification: gameSpecification,
-			eventCode: eventCode,
-			scoutName: scoutName,
-			match: new() {
-				MatchGroupName = matchGroupName,
-				MatchName = matchName,
-				ReplayNumber = replayNumber
-			},
-			teamNumber,
-			allianceIndex,
-			startTime,
-			dataFieldValues.ToReadOnly());
-
-		if (matchDataObject is null) {
-			return null;
+		Result<MatchData> matchDataResult = MatchDataToCsv.Deserialize(columns[MatchDataStartColumnId..], gameSpecification);
+		if (matchDataResult.IsFailure) {
+			return new AdHocError("Error parsing data.", ("data", text));
 		}
+		MatchData matchData = matchDataResult.Value;
 
-		return MatchDto.Create(
-			matchData: matchDataObject,
+		CreateMatchDataDtoResult matchDataDtoResult = MatchDto.Create(
+			matchData: matchData,
 			deviceId: deviceId,
 			matchId: matchId,
 			originalDeviceId: originalDeviceId,
@@ -174,7 +112,13 @@ public static class MatchDtoToCsv {
 			parents: parents,
 			gameDeviceId: gameDeviceId,
 			gameId: gameId
-		).Value;
+		);
+
+		if (matchDataDtoResult.IsFailure) {
+			return new AdHocError("Error creating MatchDataDto", ("data", text));
+		}
+
+		return matchDataDtoResult.Value;
 	}
 
 }
