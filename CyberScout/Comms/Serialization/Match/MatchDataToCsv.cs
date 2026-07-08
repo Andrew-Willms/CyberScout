@@ -109,7 +109,7 @@ public static class MatchDataToCsv {
 
 	public static Result<MatchData> Deserialize(List<string> columns, GameSpec gameSpecification) {
 
-		uint expectedColumnCount = CountOfBuiltInFields + (uint)gameSpecification.DataFields.Count;
+		uint expectedColumnCount = FixedFieldCount + (uint)gameSpecification.DataFields.Count;
 
 		if (columns.Count != expectedColumnCount) {
 			return new AdHocError("Wrong number of columns",

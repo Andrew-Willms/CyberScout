@@ -30,9 +30,9 @@ public interface IDataStore {
 
 
 
-	public Task<Result<List<InternalEventDto>>> GetEvents();
+	public Task<Result<List<EventDto>>> GetEvents();
 
-	public Task<Result<InternalEventDto>> AddNewEvent(NewEventDto newEventDto);
+	public Task<Result<EventDto>> AddNewEvent(NewEventDto newEventDto);
 
 	public Task<Result> ImportEvent(EventDto eventDto);
 

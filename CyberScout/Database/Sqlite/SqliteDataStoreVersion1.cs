@@ -2,8 +2,12 @@
 using Comms.Dtos.Game;
 using Comms.Dtos.Match;
 using Comms.Serialization;
+using Comms.Serialization.Event;
+using Comms.Serialization.Game;
 using Comms.Serialization.Match;
 using Database.Domain;
+using Domain.EventSchedule;
+using Domain.GameSpecification;
 using Domain.MatchData;
 using Microsoft.Data.Sqlite;
 using SqliteUtilities;
@@ -447,7 +451,8 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			$"""
 			 CREATE TABLE IF NOT EXISTS "{nameof(Tables.EventData)}" (
 			     "{Tables.EventData.DeviceId}" TEXT NOT NULL,
-			     "{Tables.EventData.EventId}" INTEGER NOT NULL
+			     "{Tables.EventData.EventId}" INTEGER NOT NULL,
+			     "{Tables.EventData.Data}" BLOB NOT NULL,
 			     
 			     PRIMARY KEY ("{Tables.EventData.DeviceId}", "{Tables.EventData.EventId}"),
 			     
@@ -634,16 +639,190 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 
 
-	public Task<Result<List<GameDto>>> GetGameSpecs() {
-		throw new NotImplementedException();
+	public async Task<Result<List<GameDto>>> GetGameSpecs() {
+
+		// -------- Open Transaction --------
+		BeginTransactionResult beginResult = await Connection.OpenTransaction();
+		if (beginResult.IsFailure) {
+			return new AdHocError("Error opening transaction", beginResult.Error);
+		}
+
+		// -------- Get Game Data --------
+		SqliteCommand getEventData = new($"SELECT * FROM \"{nameof(Tables.GameData)}\";", Connection);
+
+		ReaderResult readerResult = await getEventData.SafeExecuteReader();
+		if (readerResult.IsFailure) {
+			return new AdHocError("Error executing readers.", readerResult.Error);
+		}
+		SqliteDataReader reader = readerResult.Value;
+
+		// -------- Traverse Reader --------
+		List<GameDto> gameDtos = [];
+		while (reader.Read()) {
+
+			GetTextResult deviceIdResult = reader.SafeGetText(Tables.GameData.DeviceId);
+			if (deviceIdResult.IsFailure) {
+				return new AdHocError(Tables.GameData.DeviceId, deviceIdResult.Error);
+			}
+			string deviceId = deviceIdResult.Value;
+
+			GetIntegerResult gameIdResult = reader.SafeGetInteger(Tables.GameData.GameId);
+			if (gameIdResult.IsFailure) {
+				return new AdHocError(Tables.GameData.GameId, gameIdResult.Error);
+			}
+			long gameId = gameIdResult.Value;
+
+			GetBlobResult dataResult = reader.SafeGetBlob(Tables.GameData.Data);
+			if (dataResult.IsFailure) {
+				return new AdHocError(Tables.GameData.Data, dataResult.Error);
+			}
+			byte[] serializedSchedule = dataResult.Value;
+
+			Result<GameSpec> deserializationResult = GameSpecToBinary.Deserialize(serializedSchedule);
+			if (deserializationResult.IsFailure) {
+				return new AdHocError("Error deserializing game specification.", deserializationResult.Error);
+			}
+			GameSpec gameSpec = deserializationResult.Value;
+
+			gameDtos.Add(new() {
+				DeviceId = deviceId,
+				GameId = gameId,
+				Specification = gameSpec
+			});
+		}
+
+		// -------- Commit Transaction --------
+		CommitTransactionResult commitResult = await Connection.CommitTransaction();
+		if (commitResult.IsFailure) {
+			return await RollbackError.TryRollback(commitResult.Error, Connection);
+		}
+
+		return gameDtos;
+
 	}
 
-	public Task<Result<GameDto>> AddNewGameSpec(NewGameDto newGameDto) {
-		throw new NotImplementedException();
+	public async Task<Result<GameDto>> AddNewGameSpec(NewGameDto newGameDto) {
+
+
+		// -------- Open Transaction --------
+		BeginTransactionResult beginResult = await Connection.OpenTransaction();
+		if (beginResult.IsFailure) {
+			return new AdHocError("Error opening transaction", beginResult.Error);
+		}
+
+		// -------- Get GameId --------
+		SqliteCommand getGameId = new(
+			$"SELECT \"{Tables.GameIdSequence.LastUsedId}\" FROM \"{nameof(Tables.GameIdSequence)}\" WHERE ROWID = 1;",
+			Connection);
+
+		IntegerScalarResult getGameIdResult = await getGameId.ExecuteIntegerScalar();
+		if (getGameIdResult.IsFailure) {
+			return await RollbackError.TryRollback(getGameIdResult.Error, Connection);
+		}
+
+		if (getGameIdResult.Value == long.MaxValue) {
+			return await RollbackError.TryRollback(new AdHocError("Table overflow."), Connection);
+		}
+
+		long nextGameId = getGameIdResult.Value + 1;
+
+		// -------- Add Game Data --------
+		byte[] data = GameSpecToBinary.Serialize(newGameDto.Specification);
+
+		SqliteCommand addGameSchedule = new(
+			$"""
+			 INSERT INTO "{nameof(Tables.GameData)}" (
+			     "{Tables.GameData.DeviceId}",
+			     "{Tables.GameData.GameId}",
+			     "{Tables.GameData.Data}"
+			 )
+			 VALUES (
+			     @DeviceId,
+			     @GameId,
+			     @Data
+			 );
+			 """,
+			Connection);
+
+		addGameSchedule.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = newGameDto.DeviceId });
+		addGameSchedule.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = nextGameId });
+		addGameSchedule.Parameters.Add(new("@Data", SqliteType.Blob) { Value = data });
+
+		ExecuteNonQueryAndExpectResult addEventResult = await addGameSchedule.ExecuteNonQueryAndExpect(1);
+		if (addEventResult.IsFailure) {
+			return await RollbackError.TryRollback(addEventResult.Error, Connection);
+		}
+
+		// -------- Update Record Index Table --------
+		GameIndexMetaData metaData = new() { Status = RecordStatus.Stored };
+		Result updateIndexResult = await Indexer.SetGameIndexMetaData(newGameDto.DeviceId, nextGameId, metaData);
+		if (updateIndexResult.IsFailure) {
+			return await RollbackError.TryRollback(updateIndexResult.Error, Connection);
+		}
+
+		// -------- Commit Transaction --------
+		CommitTransactionResult commitResult = await Connection.CommitTransaction();
+		if (commitResult.IsFailure) {
+			return await RollbackError.TryRollback(commitResult.Error, Connection);
+		}
+
+		return new GameDto {
+			DeviceId = newGameDto.DeviceId,
+			GameId = nextGameId,
+			Specification = newGameDto.Specification
+		};
+
 	}
 
-	public Task<Result> ImportGameSpec(GameDto gameDto) {
-		throw new NotImplementedException();
+	public async Task<Result> ImportGameSpec(GameDto gameDto) {
+
+		// -------- Open Transaction --------
+		BeginTransactionResult beginResult = await Connection.OpenTransaction();
+		if (beginResult.IsFailure) {
+			return new AdHocError("Error opening transaction", beginResult.Error);
+		}
+
+		// -------- Add Game Data --------
+		byte[] data = GameSpecToBinary.Serialize(gameDto.Specification);
+
+		SqliteCommand addGameSpec = new(
+			$"""
+			 INSERT INTO "{nameof(Tables.GameData)}" (
+			     "{Tables.GameData.DeviceId}",
+			     "{Tables.GameData.GameId}",
+			     "{Tables.GameData.Data}"
+			 )
+			 VALUES (
+			     @DeviceId,
+			     @GameId,
+			     @Data
+			 );
+			 """,
+			Connection);
+
+		addGameSpec.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = gameDto.DeviceId });
+		addGameSpec.Parameters.Add(new("@GameId", SqliteType.Integer) { Value = gameDto.GameId });
+		addGameSpec.Parameters.Add(new("@Data", SqliteType.Blob) { Value = data });
+
+		ExecuteNonQueryAndExpectResult addGameResult = await addGameSpec.ExecuteNonQueryAndExpect(1);
+		if (addGameResult.IsFailure) {
+			return await RollbackError.TryRollback(addGameResult.Error, Connection);
+		}
+
+		// -------- Update Record Index Table --------
+		GameIndexMetaData metaData = new() { Status = RecordStatus.Stored };
+		Result updateIndexResult = await Indexer.SetGameIndexMetaData(gameDto.DeviceId, gameDto.GameId, metaData);
+		if (updateIndexResult.IsFailure) {
+			return await RollbackError.TryRollback(updateIndexResult.Error, Connection);
+		}
+
+		// -------- Commit Transaction --------
+		CommitTransactionResult commitResult = await Connection.CommitTransaction();
+		if (commitResult.IsFailure) {
+			return await RollbackError.TryRollback(commitResult.Error, Connection);
+		}
+
+		return Result.Success;
 	}
 
 	public async Task<Result> DeleteGameData(GameDto gameDto) {
@@ -654,7 +833,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			return new AdHocError("Error opening transaction", beginResult.Error);
 		}
 
-		// -------- Delete Event Data --------
+		// -------- Delete Game Data --------
 		SqliteCommand deleteGameData = new(
 			$"""
 			 DELETE FROM "{nameof(Tables.GameData)}"
@@ -719,12 +898,136 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 
 
-	public Task<Result<List<InternalEventDto>>> GetEvents() {
-		throw new NotImplementedException();
+	public async Task<Result<List<EventDto>>> GetEvents() {
+
+		// -------- Open Transaction --------
+		BeginTransactionResult beginResult = await Connection.OpenTransaction();
+		if (beginResult.IsFailure) {
+			return new AdHocError("Error opening transaction", beginResult.Error);
+		}
+
+		// -------- Get Event Data --------
+		SqliteCommand getEventData = new($"SELECT * FROM \"{nameof(Tables.EventData)}\";", Connection);
+
+		ReaderResult readerResult = await getEventData.SafeExecuteReader();
+		if (readerResult.IsFailure) {
+			return new AdHocError("Error executing readers.", readerResult.Error);
+		}
+		SqliteDataReader reader = readerResult.Value;
+
+		// -------- Traverse Reader --------
+		List<EventDto> eventDtos = [];
+		while (reader.Read()) {
+
+			GetTextResult deviceIdResult = reader.SafeGetText(Tables.EventData.DeviceId);
+			if (deviceIdResult.IsFailure) {
+				return new AdHocError(Tables.EventData.DeviceId, deviceIdResult.Error);
+			}
+			string deviceId = deviceIdResult.Value;
+
+			GetIntegerResult eventIdResult = reader.SafeGetInteger(Tables.EventData.EventId);
+			if (eventIdResult.IsFailure) {
+				return new AdHocError(Tables.EventData.EventId, eventIdResult.Error);
+			}
+			long eventId = eventIdResult.Value;
+
+			GetBlobResult dataResult = reader.SafeGetBlob(Tables.EventData.Data);
+			if (dataResult.IsFailure) {
+				return new AdHocError(Tables.EventData.Data, dataResult.Error);
+			}
+			byte[] serializedSchedule = dataResult.Value;
+
+			Result<EventSchedule> deserializationResult = EventScheduleToBinary.Deserialize(serializedSchedule);
+			if (deserializationResult.IsFailure) {
+				return new AdHocError("Error deserializing event schedule.", deserializationResult.Error);
+			}
+			EventSchedule eventSchedule = deserializationResult.Value;
+
+			eventDtos.Add(new() {
+				DeviceId = deviceId,
+				EventId = eventId,
+				EventSchedule = eventSchedule
+			});
+		}
+
+		// -------- Commit Transaction --------
+		CommitTransactionResult commitResult = await Connection.CommitTransaction();
+		if (commitResult.IsFailure) {
+			return await RollbackError.TryRollback(commitResult.Error, Connection);
+		}
+
+		return eventDtos;
 	}
 
-	public Task<Result<InternalEventDto>> AddNewEvent(NewEventDto newEventDto) {
-		throw new NotImplementedException();
+	public async Task<Result<EventDto>> AddNewEvent(NewEventDto newEventDto) {
+
+		// -------- Open Transaction --------
+		BeginTransactionResult beginResult = await Connection.OpenTransaction();
+		if (beginResult.IsFailure) {
+			return new AdHocError("Error opening transaction", beginResult.Error);
+		}
+
+		// -------- Get EventId --------
+		SqliteCommand getEventId = new(
+			$"SELECT \"{Tables.EventIdSequence.LastUsedId}\" FROM \"{nameof(Tables.EventIdSequence)}\" WHERE ROWID = 1;",
+			Connection);
+
+		IntegerScalarResult getEventIdResult = await getEventId.ExecuteIntegerScalar();
+		if (getEventIdResult.IsFailure) {
+			return await RollbackError.TryRollback(getEventIdResult.Error, Connection);
+		}
+
+		if (getEventIdResult.Value == long.MaxValue) {
+			return await RollbackError.TryRollback(new AdHocError("Table overflow."), Connection);
+		}
+
+		long nextEventId = getEventIdResult.Value + 1;
+
+		// -------- Add Event Data --------
+		byte[] data = EventScheduleToBinary.Serialize(newEventDto.EventSchedule);
+
+		SqliteCommand addEventSchedule = new(
+			$"""
+			 INSERT INTO "{nameof(Tables.EventData)}" (
+			     "{Tables.EventData.DeviceId}",
+			     "{Tables.EventData.EventId}",
+			     "{Tables.EventData.Data}"
+			 )
+			 VALUES (
+			     @DeviceId,
+			     @EventId,
+			     @Data
+			 );
+			 """,
+			Connection);
+
+		addEventSchedule.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = newEventDto.DeviceId });
+		addEventSchedule.Parameters.Add(new("@EventId", SqliteType.Integer) { Value = nextEventId });
+		addEventSchedule.Parameters.Add(new("@Data", SqliteType.Blob) { Value = data });
+
+		ExecuteNonQueryAndExpectResult addEventResult = await addEventSchedule.ExecuteNonQueryAndExpect(1);
+		if (addEventResult.IsFailure) {
+			return await RollbackError.TryRollback(addEventResult.Error, Connection);
+		}
+
+		// -------- Update Record Index Table --------
+		EventIndexMetaData metaData = new() { Status = RecordStatus.Stored };
+		Result updateIndexResult = await Indexer.SetEventIndexMetaData(newEventDto.DeviceId, nextEventId, metaData);
+		if (updateIndexResult.IsFailure) {
+			return await RollbackError.TryRollback(updateIndexResult.Error, Connection);
+		}
+
+		// -------- Commit Transaction --------
+		CommitTransactionResult commitResult = await Connection.CommitTransaction();
+		if (commitResult.IsFailure) {
+			return await RollbackError.TryRollback(commitResult.Error, Connection);
+		}
+
+		return new EventDto {
+			DeviceId = newEventDto.DeviceId,
+			EventId = nextEventId,
+			EventSchedule = newEventDto.EventSchedule
+		};
 	}
 
 	public async Task<Result> ImportEvent(EventDto eventDto) {
@@ -736,7 +1039,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 
 		// -------- Add Event Data --------
-		string data = MatchDataToCsv.Serialize(eventDto.EventSchedule);
+		byte[] data = EventScheduleToBinary.Serialize(eventDto.EventSchedule);
 
 		SqliteCommand addEventSchedule = new(
 			$"""
@@ -754,8 +1057,8 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			Connection);
 
 		addEventSchedule.Parameters.Add(new("@DeviceId", SqliteType.Text) { Value = eventDto.DeviceId });
-		addEventSchedule.Parameters.Add(new("@EventId", SqliteType.Integer) { Value = eventDto.DeviceId });
-		addEventSchedule.Parameters.Add(new("@Data", SqliteType.Text) { Value = data });
+		addEventSchedule.Parameters.Add(new("@EventId", SqliteType.Integer) { Value = eventDto.EventId });
+		addEventSchedule.Parameters.Add(new("@Data", SqliteType.Blob) { Value = data });
 
 		ExecuteNonQueryAndExpectResult addEventResult = await addEventSchedule.ExecuteNonQueryAndExpect(1);
 		if (addEventResult.IsFailure) {
@@ -853,11 +1156,18 @@ public class SqliteDataStoreVersion1 : IDataStore {
 
 	public async Task<Result<List<MatchDto>>> GetMatchDataFromGame(GameDto gameDto) {
 
+		// -------- Open Transaction --------
+		BeginTransactionResult beginResult = await Connection.OpenTransaction();
+		if (beginResult.IsFailure) {
+			return new AdHocError("Error opening transaction", beginResult.Error);
+		}
+
+		// -------- Get Match Data --------
 		SqliteCommand getMatchData = new(
 			$"""
-			 SELECT * FROM "{nameof(Tables.GameData)}"
-			 WHERE "{Tables.GameData.DeviceId}" = @DeviceId
-			   AND "{Tables.GameData.GameId}" = @GameId;
+			 SELECT * FROM "{nameof(Tables.MatchData)}"
+			 WHERE "{Tables.MatchData.GameDeviceId}" = @DeviceId
+			   AND "{Tables.MatchData.GameId}" = @GameId;
 			 """,
 			Connection);
 
@@ -870,6 +1180,7 @@ public class SqliteDataStoreVersion1 : IDataStore {
 		}
 		SqliteDataReader reader = readerResult.Value;
 
+		// -------- Traverse Reader --------
 		List<MatchDto> matchDtos = [];
 		while (reader.Read()) {
 
@@ -951,6 +1262,12 @@ public class SqliteDataStoreVersion1 : IDataStore {
 			}
 
 			matchDtos.Add(result.Value);
+		}
+
+		// -------- Commit Transaction --------
+		CommitTransactionResult commitResult = await Connection.CommitTransaction();
+		if (commitResult.IsFailure) {
+			return await RollbackError.TryRollback(commitResult.Error, Connection);
 		}
 
 		return matchDtos;
