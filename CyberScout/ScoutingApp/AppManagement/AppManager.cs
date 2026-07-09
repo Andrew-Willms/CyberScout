@@ -11,7 +11,12 @@ using Domain.MatchData;
 using Microsoft.Maui.ApplicationModel;
 using OneOf;
 using UtilitiesLibrary.Optional;
+using BooleanDataField = ScoutingApp.DataCollectors.BooleanDataField;
 using Event = UtilitiesLibrary.SimpleEvent.Event;
+using IntegerDataField = ScoutingApp.DataCollectors.IntegerDataField;
+using MatchDataCollector = ScoutingApp.DataCollectors.MatchDataCollector;
+using SelectionDataField = ScoutingApp.DataCollectors.SelectionDataField;
+using TextDataField = ScoutingApp.DataCollectors.TextDataField;
 
 namespace ScoutingApp.AppManagement;
 

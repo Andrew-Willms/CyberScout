@@ -1,18 +1,16 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using Domain.MatchData;
 using OneOf;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Results;
-using Willmsy.AsyncTryResult;
 
-namespace Comms.Dtos.Match;
+namespace Domain.Dtos.Match;
 
 
 
 public class MatchDto {
 
-	public required MatchData Data { get; init; }
+	public required MatchData.MatchData Data { get; init; }
 
 	public required string DeviceId { get; init; }
 
@@ -47,7 +45,7 @@ public class MatchDto {
 	private MatchDto() { }
 
 	public static CreateMatchDataDtoResult Create(
-		MatchData matchData,
+		MatchData.MatchData matchData,
 		string deviceId,
 		long matchId,
 		string originalDeviceId,
@@ -98,7 +96,7 @@ public class MatchDto {
 
 }
 
-public record CreateMatchDataDtoResult : AsyncTryResult<MatchDto, CreateMatchDataDtoError> {
+public record CreateMatchDataDtoResult : Result<MatchDto, CreateMatchDataDtoError> {
 
 	public CreateMatchDataDtoResult(MatchDto value) : base(value) { }
 

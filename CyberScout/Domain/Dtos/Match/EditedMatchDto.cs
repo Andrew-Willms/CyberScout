@@ -1,14 +1,13 @@
 ﻿using System.Collections.Generic;
-using Domain.MatchData;
 using UtilitiesLibrary.Collections;
 
-namespace Comms.Dtos.Match;
+namespace Domain.Dtos.Match;
 
 
 
 public class EditedMatchDto {
 
-	public required MatchData Data { get; init; }
+	public required MatchData.MatchData Data { get; init; }
 
 	public required string DeviceId { get; init; }
 
@@ -29,7 +28,7 @@ public class EditedMatchDto {
 	private EditedMatchDto() { }
 
 	public static EditedMatchDto? Create(
-		MatchData matchData,
+		MatchData.MatchData matchData,
 		string deviceId,
 		string originalDeviceId,
 		long originalMatchId,

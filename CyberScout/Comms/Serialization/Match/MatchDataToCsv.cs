@@ -155,7 +155,7 @@ public static class MatchDataToCsv {
 		List<object> dataFieldValues = new(gameSpecification.DataFields.Count);
 		for (int i = 0; i < gameSpecification.DataFields.Count; i++) {
 
-			int csvColumnIndex = i + CountOfBuiltInFields;
+			int csvColumnIndex = i + FixedFieldCount;
 			string value = columns[csvColumnIndex];
 
 			Result<object> result = ParseDataFieldValue(value, gameSpecification.DataFields[i]);
@@ -167,7 +167,7 @@ public static class MatchDataToCsv {
 			dataFieldValues.Add(result.Value);
 		}
 
-		MatchData? matchData = MatchData.FromRaw(
+		MatchData? matchData = MatchData.Create(
 			gameSpecification: gameSpecification,
 			eventCode: eventCode,
 			scoutName: scoutName,

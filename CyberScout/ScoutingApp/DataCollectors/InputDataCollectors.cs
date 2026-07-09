@@ -4,7 +4,7 @@ using Domain.GameSpecification;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Optional;
 
-namespace Domain.DataCollectors;
+namespace ScoutingApp.DataCollectors;
 
 
 

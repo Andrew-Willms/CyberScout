@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using Domain.DataCollectors;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Optional;
 
@@ -13,17 +12,11 @@ public abstract record DataFieldSpec {
 
 	public required string Name { get; init; }
 
-	public abstract DataField ToDataField();
-
 }
 
 public record BooleanDataFieldSpec : DataFieldSpec {
 
 	public required bool InitialValue { get; init; }
-
-	public override DataField ToDataField() {
-		return new BooleanDataField(this);
-	}
 
 }
 
@@ -35,10 +28,6 @@ public record TextDataFieldSpec : DataFieldSpec {
 
 	public required bool MustNotBeInitialValue { get; init; }
 
-	public override DataField ToDataField() {
-		return new TextDataField(this);
-	}
-
 }
 
 public record IntegerDataFieldSpec : DataFieldSpec {
@@ -49,24 +38,17 @@ public record IntegerDataFieldSpec : DataFieldSpec {
 
 	public required int MaxValue { get; init; } = int.MaxValue;
 
-	public override DataField ToDataField() {
-		return new IntegerDataField(this);
-	}
-
 }
 
 public record SelectionDataFieldSpec : DataFieldSpec, IEquatable<SelectionDataFieldSpec> {
 
+	// TODO sequence equals attribute
 	public required ReadOnlyList<string> Options { get; init; }
 
 	// Todo validate the initial value
 	public required Optional<string> InitialValue { get; init; }
 
 	public required bool RequiresValue { get; init; }
-
-	public override DataField ToDataField() {
-		return new SelectionDataField(this);
-	}
 
 	public virtual bool Equals(SelectionDataFieldSpec? other) {
 
@@ -84,4 +66,5 @@ public record SelectionDataFieldSpec : DataFieldSpec, IEquatable<SelectionDataFi
 	public override int GetHashCode() {
 		return HashCode.Combine(Options, RequiresValue);
 	}
+
 }

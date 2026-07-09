@@ -1,6 +1,4 @@
-﻿using Domain.EventSchedule;
-
-namespace Comms.Dtos.Event;
+﻿namespace Domain.Dtos.Event;
 
 
 
@@ -10,6 +8,6 @@ public record EventDto {
 
 	public required long EventId { get; init; }
 
-	public required EventSchedule EventSchedule { get; init; }
+	public required EventSchedule.EventSchedule EventSchedule { get; init; }
 
 }

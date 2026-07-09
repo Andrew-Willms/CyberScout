@@ -17,6 +17,7 @@ public enum EventDataSource {
 
 public class EventSchedule {
 
+	// At least for now, EventSchedule event can only have one MatchFormat.
 	public required MatchFormat MatchFormat { get; init; }
 
 	public required string Name { get; init; }

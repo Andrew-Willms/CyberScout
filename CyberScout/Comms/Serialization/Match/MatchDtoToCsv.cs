@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Text;
-using Comms.Dtos.Match;
+using Domain.Dtos.Match;
 using Domain.GameSpecification;
 using Domain.MatchData;
 using UtilitiesLibrary.MiscExtensions;

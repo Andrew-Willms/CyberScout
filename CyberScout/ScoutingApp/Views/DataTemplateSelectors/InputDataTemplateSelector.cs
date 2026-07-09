@@ -1,6 +1,9 @@
 ﻿using System.Diagnostics;
-using Domain.DataCollectors;
 using Microsoft.Maui.Controls;
+using BooleanInputDataCollector = ScoutingApp.DataCollectors.BooleanInputDataCollector;
+using IntegerInputDataCollector = ScoutingApp.DataCollectors.IntegerInputDataCollector;
+using SelectionInputDataCollector = ScoutingApp.DataCollectors.SelectionInputDataCollector;
+using TextInputDataCollector = ScoutingApp.DataCollectors.TextInputDataCollector;
 
 namespace ScoutingApp.Views.DataTemplateSelectors;
 
@@ -20,7 +23,6 @@ public class InputDataTemplateSelector : DataTemplateSelector {
 			BooleanInputDataCollector => BooleanDataFieldTemplate,
 			TextInputDataCollector => TextDataFieldTemplate,
 			IntegerInputDataCollector => IntegerDataFieldTemplate,
-			MultiIntegerInputDataCollector => MultiIntegerDataFieldTemplate,
 			SelectionInputDataCollector => SelectionDataFieldTemplate,
 			_ => throw new UnreachableException()
 		};

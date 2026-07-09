@@ -1,14 +1,12 @@
 ﻿using Domain.GameSpecification;
 
-namespace Comms.Dtos.Game;
+namespace Domain.Dtos.Game;
 
 
 
-public record GameDto {
+public record NewGameDto {
 
 	public required string DeviceId { get; init; }
-
-	public required long GameId { get; init; }
 
 	public required GameSpec Specification { get; init; }
 

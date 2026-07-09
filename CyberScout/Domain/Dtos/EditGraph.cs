@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using Comms.Dtos.Match;
+using Domain.Dtos.Match;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Results;
 
-namespace Comms.Dtos;
+namespace Domain.Dtos;
 
 
 
@@ -33,7 +33,6 @@ public record EditGraph {
 			return new AdHocError("Duplicate matches.");
 		}
 
-		MatchDto? originalMatch = null;
 		string originalDeviceId = matchDataDtos[0].OriginalDeviceId;
 		long originalMatchId = matchDataDtos[0].OriginalMatchId;
 

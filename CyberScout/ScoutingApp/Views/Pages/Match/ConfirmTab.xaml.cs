@@ -4,15 +4,14 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
-using Comms.Dtos;
-using Comms.Dtos.Match;
-using Domain.DataCollectors;
+using Domain.Dtos.Match;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using ScoutingApp.AppManagement;
 using ScoutingApp.Views.Pages.Flyout;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Optional;
+using DataField = ScoutingApp.DataCollectors.DataField;
 
 namespace ScoutingApp.Views.Pages.Match; 
 

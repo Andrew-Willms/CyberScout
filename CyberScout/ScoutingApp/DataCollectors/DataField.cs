@@ -1,11 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using Domain.GameSpecification;
 using UtilitiesLibrary.Optional;
 using Event = UtilitiesLibrary.SimpleEvent.Event;
 
-namespace Domain.DataCollectors;
+namespace ScoutingApp.DataCollectors;
 
 
 
@@ -32,6 +33,18 @@ public abstract class DataField : INotifyPropertyChanged {
 
 	protected void OnPropertyChanged(string propertyName) {
 		PropertyChanged?.Invoke(this, new(propertyName));
+	}
+
+
+	public static DataField FromSpec(DataFieldSpec spec) {
+
+		return spec switch {
+			BooleanDataFieldSpec booleanDataFieldSpec => new BooleanDataField(booleanDataFieldSpec),
+			TextDataFieldSpec textDataFieldSpec => new TextDataField(textDataFieldSpec),
+			IntegerDataFieldSpec integerDataFieldSpec => new IntegerDataField(integerDataFieldSpec),
+			SelectionDataFieldSpec selectionDataFieldSpec => new SelectionDataField(selectionDataFieldSpec),
+			_ => throw new ArgumentOutOfRangeException(nameof(spec)) // todo remove with closed class hierarchy
+		};
 	}
 
 }

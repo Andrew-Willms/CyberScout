@@ -1,6 +1,6 @@
 ﻿using System;
-using Domain.DataCollectors;
 using Microsoft.Maui.Controls;
+using IntegerInputDataCollector = ScoutingApp.DataCollectors.IntegerInputDataCollector;
 
 namespace ScoutingApp.Views.DataTemplates; 
 

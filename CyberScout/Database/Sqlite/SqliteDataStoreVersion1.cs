@@ -1,11 +1,11 @@
-﻿using Comms.Dtos.Event;
-using Comms.Dtos.Game;
-using Comms.Dtos.Match;
-using Comms.Serialization;
+﻿using Comms.Serialization;
 using Comms.Serialization.Event;
 using Comms.Serialization.Game;
 using Comms.Serialization.Match;
 using Database.Domain;
+using Domain.Dtos.Event;
+using Domain.Dtos.Game;
+using Domain.Dtos.Match;
 using Domain.EventSchedule;
 using Domain.GameSpecification;
 using Domain.MatchData;

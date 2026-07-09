@@ -1,7 +1,6 @@
-﻿using Comms.Dtos.Event;
-using Comms.Dtos.Game;
-using Comms.Dtos.Match;
-using Database.Domain;
+﻿using Domain.Dtos.Event;
+using Domain.Dtos.Game;
+using Domain.Dtos.Match;
 using UtilitiesLibrary.Results;
 
 namespace Database;

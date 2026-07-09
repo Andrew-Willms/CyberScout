@@ -39,11 +39,11 @@ public record ScheduledMatch {
 
 		for (int i = 0; i < Alliances.Count; i++) {
 
-			if (Alliances[i].Name != matchFormat.Alliances[i].allianceName) {
+			if (Alliances[i].Name != matchFormat.Alliances[i].Name) {
 				return false;
 			}
 
-			if (Alliances[i].Teams.Count != matchFormat.Alliances[i].teamCount) {
+			if (Alliances[i].Teams.Count != matchFormat.Alliances[i].TeamCount) {
 				return false;
 			}
 		}

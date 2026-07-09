@@ -1,12 +1,10 @@
-﻿using Domain.MatchData;
-
-namespace Comms.Dtos.Match;
+﻿namespace Domain.Dtos.Match;
 
 
 
 public record NewMatchDto {
 
-	public required MatchData Data { get; init; }
+	public required MatchData.MatchData Data { get; init; }
 
 	public required string DeviceId { get; init; }
 

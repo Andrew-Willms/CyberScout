@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel;
-using Domain.DataCollectors;
 using Microsoft.Maui.Controls;
 using ScoutingApp.AppManagement;
 using UtilitiesLibrary.Collections;
+using InputDataCollector = ScoutingApp.DataCollectors.InputDataCollector;
 
 namespace ScoutingApp.Views.Pages.Match; 
 

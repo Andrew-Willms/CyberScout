@@ -8,7 +8,7 @@ namespace Domain.GameSpecification;
 
 
 
-public record GameSpec : IEquatable<GameSpec> {
+public record GameSpec {
 
 	public required string Name { get; init; }
 	public string Description { get; init; } = string.Empty;
@@ -17,6 +17,7 @@ public record GameSpec : IEquatable<GameSpec> {
 	public required Version Version { get; init; } = new(1, 0, 0);
 	//public DateTime VersionReleaseDate { get; } = DateTime.Now;
 
+	// At least for now, GameSpec event can only have one MatchFormat.
 	public required MatchFormat MatchFormat { get; init; }
 
 	public required ReadOnlyList<DataFieldSpec> DataFields { get; init; }

@@ -6,6 +6,7 @@ using Microsoft.Maui.Controls;
 using ScoutingApp.AppManagement;
 using UtilitiesLibrary.Collections;
 using UtilitiesLibrary.Optional;
+using InputDataCollector = ScoutingApp.DataCollectors.InputDataCollector;
 
 namespace ScoutingApp.Views.Pages.Match; 
 

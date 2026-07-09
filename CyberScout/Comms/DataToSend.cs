@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
-using Comms.Dtos.Event;
-using Comms.Dtos.Game;
-using Comms.Dtos.Match;
+using Domain.Dtos.Event;
+using Domain.Dtos.Game;
+using Domain.Dtos.Match;
 
-namespace Comms.Dtos;
+namespace Comms;
 
 
 

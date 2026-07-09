@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Domain.DataCollectors;
 using Domain.Errors;
 using Domain.GameSpecification;
 using UtilitiesLibrary.Collections;
@@ -12,7 +11,7 @@ namespace Domain.MatchData;
 
 
 
-public record MatchData : IEquatable<MatchData> {
+public record MatchData {
 
 	public GameSpec GameSpecification { get; private init; }
 
@@ -53,44 +52,7 @@ public record MatchData : IEquatable<MatchData> {
 		DataFields = dataFieldValues;
 	}
 
-	// TODO move this to where the collectors live
-	public static MatchData? FromDataCollector(
-		MatchDataCollector collector,
-		string eventCode,
-		string scoutName) {
-
-		List<DomainError> errors = [];
-
-		Match match = new() {
-			MatchGroupName = null, // TODO fix
-			MatchName = null,
-			ReplayNumber = 0
-		};
-
-		if (!collector.IsValid) {
-			errors.Add(new MatchDataCollectorInvalid { CollectorErrors = collector.Errors.ToReadOnly() });
-		}
-
-		ValidateAllianceIndex(errors.Add, collector.GameSpecification, collector.Alliance.Value);
-		ValidateDataFields(errors.Add, collector.GameSpecification, collector.DataFields, out ReadOnlyList<object> dataFieldResults);
-
-		if (errors.Any()) {
-			return null;
-		}
-
-		return new(
-			collector.GameSpecification,
-			eventCode,
-			scoutName,
-			match,
-			collector.TeamNumber.Value,
-			collector.Alliance.Value,
-			collector.StartTime,
-			dataFieldResults
-		);
-	}
-
-	public static MatchData? FromRaw(
+	public static MatchData? Create(
 		GameSpec gameSpecification,
 		string eventCode,
 		string scoutName,
@@ -121,8 +83,6 @@ public record MatchData : IEquatable<MatchData> {
 		);
 	}
 
-
-
 	private static void ValidateAllianceIndex(
 		Action<DomainError> errorSink,
 		GameSpec gameSpecification,
@@ -134,37 +94,6 @@ public record MatchData : IEquatable<MatchData> {
 				MaxAllianceIndex = gameSpecification.MatchFormat.Alliances.Count - 1
 			});
 		}
-	}
-
-	private static void ValidateDataFields(
-		Action<DomainError> errorSink,
-		GameSpec gameSpec,
-		ReadOnlyList<DataField> dataFields,
-		out ReadOnlyList<object> dataFieldResults) {
-
-		List<object> results = [];
-
-		for (int index = 0; index < gameSpec.DataFields.Count; index++) {
-
-			DataFieldSpec expectedFieldSpec = gameSpec.DataFields[index];
-
-			DataField receivedField = dataFields[index];
-			DataFieldSpec receivedFieldSpec = receivedField.Specification;
-
-			if (expectedFieldSpec != receivedFieldSpec) {
-				errorSink(DataFieldMismatch.Create(expectedFieldSpec, receivedFieldSpec, receivedField.BaseValue) ?? throw new UnreachableException());
-				continue;
-			}
-
-			if (receivedField.Errors.Any()) {
-				errorSink(DataFieldMismatch.Create(expectedFieldSpec, receivedFieldSpec, receivedField.BaseValue) ?? throw new UnreachableException());
-				continue;
-			}
-
-			results.Add(receivedField.BaseValue);
-		}
-
-		dataFieldResults = results.ToReadOnly();
 	}
 
 	private static void ValidateDataFieldValues(
